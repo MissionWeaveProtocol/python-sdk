@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.missionweave/
+__pycache__/
+*.py[cod]
+*.sqlite3
+dist/
+htmlcov/
