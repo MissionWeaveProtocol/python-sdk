@@ -4,6 +4,10 @@
   <img src="https://raw.githubusercontent.com/MissionWeaveProject/missionweaveprotocol/main/assets/brand/missionweave-icon.svg" width="160" alt="MissionWeave icon">
 </p>
 
+<p align="center">
+  <strong><a href="https://missionweaveproject.github.io/missionweaveprotocol.github.io/">Official website and documentation</a></strong>
+</p>
+
 The MissionWeave Python SDK is the official Python reference implementation of the
 [MissionWeave Protocol](https://github.com/MissionWeaveProject/missionweaveprotocol). It includes
 the authoritative Core, Agent runtime, Worker Scheduler, Group gateway, storage adapters,
