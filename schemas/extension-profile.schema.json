@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/extension-profile.schema.json",
+  "title": "MissionWeave 0.1 Extension Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profileUri",
+    "name",
+    "version",
+    "schemaUri",
+    "schemaHash",
+    "requiredCapabilities",
+    "critical",
+    "commandKinds",
+    "eventKinds",
+    "overridesCoreInvariants",
+    "approvedBy",
+    "approvedAt",
+    "signature"
+  ],
+  "properties": {
+    "profileUri": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/semver"
+    },
+    "schemaUri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "schemaHash": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "requiredCapabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/capabilityRef"
+      }
+    },
+    "critical": {
+      "type": "boolean"
+    },
+    "commandKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ext\\.[a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*){2,}$",
+        "maxLength": 160
+      },
+      "uniqueItems": true
+    },
+    "eventKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ext\\.[a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*){2,}$",
+        "maxLength": 160
+      },
+      "uniqueItems": true
+    },
+    "overridesCoreInvariants": {
+      "const": false
+    },
+    "approvedBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "approvedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

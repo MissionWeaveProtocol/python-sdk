@@ -1,0 +1,7 @@
+{
+  "protocolVersion": "0.1",
+  "frameId": "urn:uuid:10000000-0000-4000-8000-000000000003",
+  "frameType": "MESSAGE_DELTA",
+  "messageId": "urn:missionweave:message:one",
+  "delta": "partial token output"
+}

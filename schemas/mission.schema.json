@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/mission.schema.json",
+  "title": "MissionWeave 0.1 Mission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "missionId",
+    "groupId",
+    "revision",
+    "objective",
+    "definitionOfDone",
+    "missionOwner",
+    "coordinator",
+    "state",
+    "budget",
+    "deadline",
+    "approvalPolicy",
+    "createdAt"
+  ],
+  "properties": {
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "definitionOfDone": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/acceptanceCriterion"
+      },
+      "minItems": 1
+    },
+    "missionOwner": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "coordinator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agentId", "agentCardVersion", "coordinatorEpoch", "leaseId"],
+      "properties": {
+        "agentId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "agentCardVersion": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "coordinatorEpoch": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "leaseId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      }
+    },
+    "state": {
+      "enum": [
+        "active",
+        "awaiting_approval",
+        "approved",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "budget": {
+      "$ref": "common.schema.json#/$defs/budget"
+    },
+    "deadline": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "approvalPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finalHumanApproval", "highRiskExecutionApproval"],
+      "properties": {
+        "finalHumanApproval": {
+          "type": "boolean"
+        },
+        "highRiskExecutionApproval": {
+          "type": "boolean"
+        },
+        "policyVersion": {
+          "$ref": "common.schema.json#/$defs/semver"
+        }
+      }
+    },
+    "parent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missionId", "workItemId", "depth"],
+      "properties": {
+        "missionId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "workItemId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "depth": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        }
+      }
+    },
+    "followUpToMissionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "pinnedProfiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileUri", "majorVersion"],
+        "properties": {
+          "profileUri": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "majorVersion": {
+            "$ref": "common.schema.json#/$defs/safeInteger"
+          }
+        }
+      },
+      "uniqueItems": true
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {"required": ["parent"]}
+      },
+      "then": {
+        "properties": {
+          "missionOwner": {
+            "$ref": "common.schema.json#/$defs/humanActor"
+          },
+          "approvalPolicy": {
+            "properties": {
+              "finalHumanApproval": {"const": true}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missionOwner": {
+            "$ref": "common.schema.json#/$defs/agentActor"
+          }
+        }
+      }
+    }
+  ]
+}

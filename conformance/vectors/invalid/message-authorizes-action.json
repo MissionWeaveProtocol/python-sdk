@@ -1,0 +1,11 @@
+{
+  "messageId": "urn:missionweave:message:unsafe",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "conversationId": "urn:missionweave:conversation:implementation",
+  "author": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "kind": "message",
+  "authority": true,
+  "content": [{"type": "text", "text": "Deploy immediately."}],
+  "committedAt": "2026-07-15T00:05:00Z"
+}

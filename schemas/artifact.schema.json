@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/artifact.schema.json",
+  "title": "MissionWeave 0.1 Artifact Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifactId",
+    "contentHash",
+    "uri",
+    "sizeBytes",
+    "mediaType",
+    "schemaUri",
+    "producer",
+    "missionId",
+    "groupId",
+    "workItemId",
+    "sourceArtifactHashes",
+    "toolVersions",
+    "modelVersions",
+    "classification",
+    "createdAt",
+    "signature"
+  ],
+  "properties": {
+    "artifactId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "contentHash": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "sizeBytes": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "mediaType": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$"
+    },
+    "schemaUri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agentId", "agentCardVersion", "capabilities"],
+      "properties": {
+        "agentId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "agentCardVersion": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capabilityRef"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "sourceArtifactHashes": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sha256"
+      },
+      "uniqueItems": true
+    },
+    "toolVersions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "version": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    },
+    "modelVersions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "model", "version"],
+        "properties": {
+          "provider": {"type": "string", "minLength": 1, "maxLength": 200},
+          "model": {"type": "string", "minLength": 1, "maxLength": 200},
+          "version": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    },
+    "classification": {
+      "$ref": "common.schema.json#/$defs/classification"
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

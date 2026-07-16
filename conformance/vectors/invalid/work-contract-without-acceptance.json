@@ -1,0 +1,30 @@
+{
+  "contractVersion": 1,
+  "goal": "Implement cursor-based pagination.",
+  "requiredDeliverables": [
+    {
+      "deliverableId": "source-change",
+      "description": "Source and test changes.",
+      "mediaType": "application/vnd.git.patch",
+      "schema": "urn:missionweave:schema:opaque"
+    }
+  ],
+  "inputArtifacts": [],
+  "dependencyWorkItemIds": [],
+  "allowedResources": [],
+  "requiredCapabilities": [
+    {"id": "acme.software.python-implementation", "version": "2.1.0"}
+  ],
+  "deadline": "2026-07-18T00:00:00Z",
+  "requestedUrgency": "normal",
+  "businessImpact": "Required for release.",
+  "retryPolicy": {
+    "maxAttempts": 2,
+    "backoff": "fixed",
+    "maxDelay": "PT1M",
+    "retryableFailures": []
+  },
+  "budget": {"modelTokenLimit": 10000},
+  "sideEffectRisk": "reversible",
+  "executionApproval": "not_required"
+}

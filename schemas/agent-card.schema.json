@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/agent-card.schema.json",
+  "title": "MissionWeave 0.1 Agent Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agentId",
+    "organizationId",
+    "cardVersion",
+    "displayName",
+    "owner",
+    "status",
+    "protocolVersions",
+    "endpoints",
+    "publicKeys",
+    "capabilities",
+    "maxConcurrency",
+    "issuedAt",
+    "signature"
+  ],
+  "properties": {
+    "agentId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "organizationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "cardVersion": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "owner": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "status": {
+      "enum": ["active", "deprecated", "revoked"]
+    },
+    "protocolVersions": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/protocolVersion"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["transport", "uri"],
+        "properties": {
+          "transport": {
+            "const": "wss"
+          },
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^wss://"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "publicKeys": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/publicKey"
+      },
+      "minItems": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "inputSchema",
+          "inputSchemaHash",
+          "outputSchema",
+          "outputSchemaHash",
+          "constraints",
+          "verifiedEvidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$",
+            "maxLength": 200
+          },
+          "version": {
+            "$ref": "common.schema.json#/$defs/semver"
+          },
+          "inputSchema": {
+            "type": "string",
+            "format": "uri"
+          },
+          "inputSchemaHash": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "outputSchema": {
+            "type": "string",
+            "format": "uri"
+          },
+          "outputSchemaHash": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "constraints": {
+            "type": "object"
+          },
+          "verifiedEvidence": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "maxConcurrency": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "issuedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "validUntil": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

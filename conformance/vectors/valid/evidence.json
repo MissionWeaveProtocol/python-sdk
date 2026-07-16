@@ -1,0 +1,22 @@
+{
+  "evidenceId": "urn:missionweave:evidence:integration-tests",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "workItemId": "urn:missionweave:work-item:implementation",
+  "type": "deterministic_test",
+  "subject": {"type": "artifact", "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "criterionIds": ["integration-tests"],
+  "method": "Run the repository integration test suite in the pinned environment.",
+  "result": "passed",
+  "details": {"passed": 24, "failed": 0},
+  "artifactHashes": ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  "generatedBy": {"type": "agent", "id": "urn:missionweave:agent:test-reviewer"},
+  "toolVersion": "pytest 8.4.1",
+  "createdAt": "2026-07-15T03:10:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:test-reviewer",
+    "createdAt": "2026-07-15T03:10:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

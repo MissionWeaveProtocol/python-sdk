@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/work-contract.schema.json",
+  "title": "MissionWeave 0.1 Work Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "goal",
+    "requiredDeliverables",
+    "acceptanceCriteria",
+    "inputArtifacts",
+    "dependencyWorkItemIds",
+    "allowedResources",
+    "requiredCapabilities",
+    "deadline",
+    "requestedUrgency",
+    "businessImpact",
+    "retryPolicy",
+    "budget",
+    "sideEffectRisk",
+    "executionApproval"
+  ],
+  "properties": {
+    "contractVersion": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "requiredDeliverables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["deliverableId", "description", "mediaType", "schema"],
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "mediaType": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$"
+          },
+          "schema": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/acceptanceCriterion"
+      },
+      "minItems": 1
+    },
+    "inputArtifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sha256"
+      },
+      "uniqueItems": true
+    },
+    "dependencyWorkItemIds": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "allowedResources": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/resourceGrant"
+      }
+    },
+    "requiredCapabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/capabilityRef"
+      },
+      "minItems": 1
+    },
+    "deadline": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "requestedUrgency": {
+      "enum": ["routine", "normal", "high", "critical"]
+    },
+    "businessImpact": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "retryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts", "backoff", "maxDelay", "retryableFailures"],
+      "properties": {
+        "maxAttempts": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "backoff": {
+          "enum": ["none", "fixed", "exponential"]
+        },
+        "maxDelay": {
+          "$ref": "common.schema.json#/$defs/duration"
+        },
+        "retryableFailures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,127}$"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "budget": {
+      "$ref": "common.schema.json#/$defs/budget"
+    },
+    "sideEffectRisk": {
+      "enum": ["none", "reversible", "external", "high_risk", "destructive"]
+    },
+    "executionApproval": {
+      "enum": ["not_required", "policy_required", "human_required"]
+    },
+    "constraints": {
+      "type": "object"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  }
+}

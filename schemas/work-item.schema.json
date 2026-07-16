@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/work-item.schema.json",
+  "title": "MissionWeave 0.1 WorkItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workItemId",
+    "missionId",
+    "groupId",
+    "conversationId",
+    "revision",
+    "state",
+    "exclusive",
+    "contract",
+    "createdBy",
+    "createdAt"
+  ],
+  "properties": {
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "conversationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "state": {
+      "enum": [
+        "open",
+        "offered",
+        "queued",
+        "active",
+        "blocked",
+        "submitted",
+        "verified",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "exclusive": {
+      "type": "boolean"
+    },
+    "contract": {
+      "$ref": "work-contract.schema.json"
+    },
+    "offers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["offerId", "agentId", "agentCardVersion", "expiresAt", "status"],
+        "properties": {
+          "offerId": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "agentId": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "agentCardVersion": {
+            "$ref": "common.schema.json#/$defs/positiveInteger"
+          },
+          "expiresAt": {
+            "$ref": "common.schema.json#/$defs/timestamp"
+          },
+          "status": {
+            "enum": ["pending", "accepted", "declined", "withdrawn", "expired", "lost_race"]
+          },
+          "declineReason": {
+            "enum": ["capacity", "deadline", "capability", "authorization", "dependency", "budget", "other"]
+          }
+        }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agentId",
+        "agentCardVersion",
+        "capabilityPins",
+        "ownershipEpoch",
+        "ownershipLeaseId",
+        "acceptedAt"
+      ],
+      "properties": {
+        "agentId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "agentCardVersion": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "capabilityPins": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capabilityRef"
+          },
+          "minItems": 1
+        },
+        "ownershipEpoch": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "ownershipLeaseId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "acceptedAt": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "selectionBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requiredCapabilities",
+        "verifiedMatches",
+        "authorizationEligible",
+        "availabilityEstimate",
+        "expectedCost",
+        "reliabilityEvidence",
+        "policyRulesApplied"
+      ],
+      "properties": {
+        "requiredCapabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capabilityRef"
+          },
+          "minItems": 1
+        },
+        "verifiedMatches": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capabilityRef"
+          },
+          "minItems": 1
+        },
+        "authorizationEligible": {
+          "type": "boolean"
+        },
+        "availabilityEstimate": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "expectedCost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reliabilityEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "policyRulesApplied": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "scheduleEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimatedStart", "estimatedCompletion", "confidence", "capacityStatus", "lastCalculatedAt"],
+      "properties": {
+        "estimatedStart": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "estimatedCompletion": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "capacityStatus": {
+          "enum": ["available", "queued", "constrained", "blocked"]
+        },
+        "lastCalculatedAt": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currentPhase", "completedMilestones", "nextCheckpoint", "blockers", "updatedCompletionEstimate", "evidenceIds"],
+      "properties": {
+        "currentPhase": {"type": "string", "minLength": 1, "maxLength": 500},
+        "completedMilestones": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 500}
+        },
+        "nextCheckpoint": {"type": "string", "minLength": 1, "maxLength": 500},
+        "blockers": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 2000}
+        },
+        "updatedCompletionEstimate": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/id"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactHashes", "evidenceIds", "submittedAt"],
+      "properties": {
+        "artifactHashes": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/sha256"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/id"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "submittedAt": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "createdBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "authorizedBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updatedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "queued",
+              "active",
+              "blocked",
+              "submitted",
+              "verified"
+            ]
+          }
+        },
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["owner", "selectionBasis"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"state": {"enum": ["submitted", "verified"]}},
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["submission"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/membership.schema.json",
+  "title": "MissionWeave 0.1 Group Membership",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "membershipId",
+    "missionId",
+    "groupId",
+    "member",
+    "role",
+    "state",
+    "membershipEpoch",
+    "scopes",
+    "visibilityStartSequence",
+    "grantedAt"
+  ],
+  "properties": {
+    "membershipId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "member": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "role": {
+      "enum": ["mission_owner", "coordinator", "worker", "reviewer", "observer", "work_delegate"]
+    },
+    "state": {
+      "enum": ["provisional", "active", "ended"]
+    },
+    "membershipEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._:-]*$",
+        "maxLength": 160
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "delegationGrants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grantId",
+          "granteeAgentId",
+          "missionId",
+          "groupId",
+          "targetWorkItemId",
+          "allowedCapabilities",
+          "budget",
+          "maxDescendantDepth",
+          "granteeMembershipEpoch",
+          "coordinatorEpoch",
+          "grantedBy",
+          "grantedAt",
+          "expiresAt"
+        ],
+        "properties": {
+          "grantId": {"$ref": "common.schema.json#/$defs/id"},
+          "granteeAgentId": {"$ref": "common.schema.json#/$defs/id"},
+          "missionId": {"$ref": "common.schema.json#/$defs/id"},
+          "groupId": {"$ref": "common.schema.json#/$defs/id"},
+          "targetWorkItemId": {"$ref": "common.schema.json#/$defs/id"},
+          "allowedCapabilities": {
+            "type": "array",
+            "items": {"$ref": "common.schema.json#/$defs/capabilityRef"},
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "budget": {
+            "allOf": [{"$ref": "common.schema.json#/$defs/budget"}],
+            "required": [
+              "currency",
+              "financialLimit",
+              "modelTokenLimit",
+              "toolCallLimit",
+              "computeSecondsLimit",
+              "wallClockSecondsLimit",
+              "externalSideEffectLimit"
+            ]
+          },
+          "maxDescendantDepth": {"$ref": "common.schema.json#/$defs/safeInteger"},
+          "granteeMembershipEpoch": {
+            "$ref": "common.schema.json#/$defs/positiveInteger"
+          },
+          "coordinatorEpoch": {"$ref": "common.schema.json#/$defs/positiveInteger"},
+          "grantedBy": {"$ref": "common.schema.json#/$defs/agentActor"},
+          "grantedAt": {"$ref": "common.schema.json#/$defs/timestamp"},
+          "expiresAt": {"$ref": "common.schema.json#/$defs/timestamp"}
+        }
+      },
+      "uniqueItems": true
+    },
+    "visibilityStartSequence": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "contextPackageId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "provisionalExpiresAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "grantedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "activatedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "endedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"state": {"const": "provisional"}},
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["provisionalExpiresAt", "contextPackageId"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"state": {"const": "active"}},
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["activatedAt"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"state": {"const": "ended"}},
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["endedAt"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "protocolVersion": "0.1",
+  "frameId": "urn:uuid:00000000-0000-4000-8000-000000000003",
+  "frameType": "SUBSCRIBE",
+  "subscriptionId": "urn:missionweave:subscription:worker-one",
+  "groups": [
+    {
+      "groupId": "urn:missionweave:group:mission-one",
+      "afterSequence": 41,
+      "attention": {
+        "eventKinds": ["work.progressed", "message.posted"],
+        "workItemIds": ["urn:missionweave:work-item:implementation"],
+        "mentionsOnly": false,
+        "announcements": true
+      }
+    },
+    {
+      "groupId": "urn:missionweave:group:mission-two",
+      "afterSequence": 7
+    }
+  ]
+}

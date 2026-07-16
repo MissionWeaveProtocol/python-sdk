@@ -1,0 +1,34 @@
+{
+  "missionId": "urn:missionweave:mission:legacy-completed",
+  "groupId": "urn:missionweave:group:legacy-completed",
+  "revision": 6,
+  "objective": "Reject a legacy Mission state alias.",
+  "definitionOfDone": [
+    {
+      "criterionId": "state-aligned",
+      "description": "The Mission state uses the authoritative enum value.",
+      "evidenceRequired": ["deterministic_test"]
+    }
+  ],
+  "missionOwner": {"type": "human", "id": "urn:missionweave:human:mission-owner"},
+  "coordinator": {
+    "agentId": "urn:missionweave:agent:coordinator",
+    "agentCardVersion": 2,
+    "coordinatorEpoch": 4,
+    "leaseId": "urn:missionweave:lease:coordinator-four"
+  },
+  "state": "completed",
+  "budget": {
+    "currency": "USD",
+    "financialLimit": 100,
+    "modelTokenLimit": 100000,
+    "wallClockSecondsLimit": 86400
+  },
+  "deadline": "2026-07-20T00:00:00Z",
+  "approvalPolicy": {
+    "finalHumanApproval": true,
+    "highRiskExecutionApproval": true,
+    "policyVersion": "1.2.0"
+  },
+  "createdAt": "2026-07-15T00:00:00Z"
+}

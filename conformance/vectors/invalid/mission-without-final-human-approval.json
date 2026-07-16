@@ -1,0 +1,25 @@
+{
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "revision": 1,
+  "objective": "Implement the feature.",
+  "definitionOfDone": [
+    {
+      "criterionId": "tests-pass",
+      "description": "Tests pass.",
+      "evidenceRequired": ["deterministic_test"]
+    }
+  ],
+  "missionOwner": {"type": "human", "id": "urn:missionweave:human:mission-owner"},
+  "coordinator": {
+    "agentId": "urn:missionweave:agent:coordinator",
+    "agentCardVersion": 2,
+    "coordinatorEpoch": 1,
+    "leaseId": "urn:missionweave:lease:coordinator-one"
+  },
+  "state": "active",
+  "budget": {"modelTokenLimit": 10000},
+  "deadline": "2026-07-20T00:00:00Z",
+  "approvalPolicy": {"finalHumanApproval": false, "highRiskExecutionApproval": true},
+  "createdAt": "2026-07-15T00:00:00Z"
+}

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/event.schema.json",
+  "title": "MissionWeave 0.1 Event Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "eventId",
+    "groupId",
+    "sequence",
+    "aggregateRevision",
+    "kind",
+    "actor",
+    "cause",
+    "correlationId",
+    "occurredAt",
+    "payload",
+    "acceptedBy",
+    "signature"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "$ref": "common.schema.json#/$defs/protocolVersion"
+    },
+    "eventId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "sequence": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "aggregateRevision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "mission.created",
+            "mission.coordinator.assigned",
+            "mission.coordinator.renewed",
+            "mission.submitted_for_approval",
+            "mission.approved",
+            "mission.changes_requested",
+            "mission.cancelled",
+            "mission.terminated",
+            "mission.child.created",
+            "mission.follow_up.created",
+            "membership.changed",
+            "membership.ended",
+            "membership.delegation.granted",
+            "message.posted",
+            "message.corrected",
+            "message.retracted",
+            "message.redacted",
+            "work.proposed",
+            "work.authorized",
+            "work.offer.created",
+            "work.offer.accepted",
+            "work.contract.revised",
+            "work.started",
+            "work.progressed",
+            "work.checkpointed",
+            "work.blocked",
+            "work.unblocked",
+            "work.submitted",
+            "work.result.accepted",
+            "work.failed",
+            "work.cancelled",
+            "artifact.published",
+            "approval.execution.granted",
+            "policy.cooperation_override.granted",
+            "group.snapshot.created",
+            "group.archived"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^ext\\.[a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*){2,}$",
+          "maxLength": 160
+        }
+      ]
+    },
+    "actor": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "cause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": ["command", "event", "timer", "policy"]
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      }
+    },
+    "correlationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "conversationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "occurredAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "acceptedBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "commandHash": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

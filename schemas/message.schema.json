@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/message.schema.json",
+  "title": "MissionWeave 0.1 Committed Message",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageId",
+    "missionId",
+    "groupId",
+    "conversationId",
+    "author",
+    "kind",
+    "authority",
+    "content",
+    "committedAt"
+  ],
+  "properties": {
+    "messageId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "conversationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "author": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "kind": {
+      "enum": ["message", "correction", "retraction", "redaction"]
+    },
+    "authority": {
+      "description": "Messages are context only and can never authorize execution.",
+      "const": false
+    },
+    "targetMessageId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "content": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "text"],
+            "properties": {
+              "type": {"const": "text"},
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "artifactHash"],
+            "properties": {
+              "type": {"const": "artifact_ref"},
+              "artifactHash": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "schema", "data"],
+            "properties": {
+              "type": {"const": "data_ref"},
+              "schema": {
+                "type": "string",
+                "format": "uri"
+              },
+              "data": {}
+            }
+          }
+        ]
+      },
+      "minItems": 1
+    },
+    "mentions": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/actor"
+      },
+      "uniqueItems": true
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "committedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {"enum": ["correction", "retraction", "redaction"]}
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["targetMessageId", "reason"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "agentId": "urn:missionweave:agent:developer-one",
+  "organizationId": "urn:missionweave:organization:acme",
+  "cardVersion": 3,
+  "displayName": "Developer Agent One",
+  "owner": {"type": "human", "id": "urn:missionweave:human:platform-owner"},
+  "status": "active",
+  "protocolVersions": ["0.1"],
+  "endpoints": [{"transport": "wss", "uri": "wss://agents.acme.example/developer-one"}],
+  "publicKeys": [
+    {
+      "keyId": "urn:missionweave:key:developer-one",
+      "algorithm": "Ed25519",
+      "publicKey": "cHVibGlja2V5",
+      "validFrom": "2026-07-01T00:00:00Z"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "acme.software.python-implementation",
+      "version": "2.1.0",
+      "inputSchema": "https://schemas.acme.example/input.json",
+      "inputSchemaHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "outputSchema": "https://schemas.acme.example/output.json",
+      "outputSchemaHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "constraints": {},
+      "verifiedEvidence": ["urn:missionweave:evidence:capability-python-2026"]
+    }
+  ],
+  "maxConcurrency": 2,
+  "issuedAt": "2026-07-01T00:00:00Z",
+  "permissions": ["production.deploy"],
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:organization-registry",
+    "createdAt": "2026-07-01T00:00:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

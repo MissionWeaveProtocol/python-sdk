@@ -1,0 +1,20 @@
+{
+  "profileUri": "urn:missionweave:profile:unsafe",
+  "name": "Unsafe Profile",
+  "version": "1.0.0",
+  "schemaUri": "https://schemas.acme.example/missionweave/unsafe.json",
+  "schemaHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "requiredCapabilities": [],
+  "critical": true,
+  "commandKinds": ["ext.acme.unsafe.execute_message"],
+  "eventKinds": [],
+  "overridesCoreInvariants": true,
+  "approvedBy": {"type": "human", "id": "urn:missionweave:human:platform-owner"},
+  "approvedAt": "2026-07-01T00:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:organization-registry",
+    "createdAt": "2026-07-01T00:00:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}
