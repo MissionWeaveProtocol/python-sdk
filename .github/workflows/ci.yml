@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Python SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: missionweave
+          POSTGRES_PASSWORD: missionweave
+          POSTGRES_USER: missionweave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U missionweave -d missionweave"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --locked
+
+      - name: Guard canonical naming
+        shell: python
+        run: |
+          from __future__ import annotations
+
+          import re
+          from pathlib import Path
+
+          root = Path(".")
+          legacy_short = "".join(chr(code) for code in (97, 119, 103, 112))
+          legacy_phrase = re.compile(
+              r"agent[\s_-]+workgroup[\s_-]+protocol",
+              re.IGNORECASE,
+          )
+          legacy_repositories = (
+              "".join(("MissionWeave", "Protocol")),
+              "".join(("MissionWeave", "Python")),
+          )
+          mixed_environment_prefix = "".join(("Mission", "Weave", "_"))
+          decision_record_word = "".join(chr(code) for code in (97, 100, 114))
+          decision_record_pattern = re.compile(
+              rf"\b{re.escape(decision_record_word)}\b",
+              re.IGNORECASE,
+          )
+          ignored_parts = {
+              ".git",
+              ".mypy_cache",
+              ".pytest_cache",
+              ".ruff_cache",
+              ".venv",
+              "build",
+              "dist",
+          }
+          violations: list[str] = []
+
+          for path in sorted(root.rglob("*")):
+              if ignored_parts.intersection(path.parts):
+                  continue
+              rendered_path = path.as_posix()
+              lowered_path = rendered_path.casefold()
+              if legacy_short in lowered_path:
+                  violations.append(f"legacy path: {rendered_path}")
+              if decision_record_word in (part.casefold() for part in path.parts):
+                  violations.append(f"retired documentation path: {rendered_path}")
+              if not path.is_file():
+                  continue
+              try:
+                  content = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              if legacy_short in content.casefold():
+                  violations.append(f"legacy identifier: {rendered_path}")
+              if legacy_phrase.search(content):
+                  violations.append(f"legacy protocol name: {rendered_path}")
+              if any(name in content for name in legacy_repositories):
+                  violations.append(f"legacy repository name: {rendered_path}")
+              if mixed_environment_prefix in content:
+                  violations.append(f"mixed-case environment prefix: {rendered_path}")
+              if decision_record_pattern.search(content):
+                  violations.append(f"retired documentation reference: {rendered_path}")
+
+          if violations:
+              raise SystemExit("\n".join(violations))
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Type-check
+        run: uv run mypy
+
+      - name: Run tests
+        env:
+          MISSIONWEAVE_TEST_POSTGRES_URL: >-
+            postgresql://missionweave:missionweave@127.0.0.1:5432/missionweave
+        run: uv run pytest
+
+      - name: Run conformance suite
+        run: uv run missionweave-conformance --root .
+
+      - name: Run proof of concept
+        run: uv run missionweave-demo --workdir "${RUNNER_TEMP}/missionweave-poc"
+
+      - name: Build wheel and source distribution
+        run: uv build
