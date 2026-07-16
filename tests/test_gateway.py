@@ -1,0 +1,1284 @@
+from __future__ import annotations
+
+import asyncio
+import base64
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from missionweave.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
+from missionweave.canonical import canonical_bytes
+from missionweave.core import Core, StaleSessionEpoch
+from missionweave.crypto import generate_keypair, verify_canonical
+from missionweave.gateway import (
+    CoreGatewayAdapter,
+    GatewaySchemaError,
+    GroupGateway,
+    UnknownCriticalExtension,
+)
+from missionweave.models import (
+    AddMembershipPayload,
+    AgentCard,
+    Capability,
+    Command,
+    CommandKind,
+    CreateMissionPayload,
+    CreateWorkItemPayload,
+    OfferWorkItemPayload,
+    OpenAgentSessionPayload,
+    Principal,
+    Query,
+    QueryKind,
+    RegisterAgentCardPayload,
+    ResourceBudget,
+    Role,
+    SelectionBasis,
+    WorkContract,
+)
+from missionweave.store import InMemoryStore
+from missionweave.wire import (
+    AckFrame,
+    Acknowledgement,
+    AttentionFilter,
+    AuthFrame,
+    ChallengeFrame,
+    CommandFrame,
+    ErrorCode,
+    ErrorFrame,
+    EventFrame,
+    GroupCursor,
+    HelloFrame,
+    SubscribeFrame,
+    WelcomeFrame,
+    encode_frame,
+    parse_frame,
+)
+
+AGENT_ID = "urn:missionweave:agent:reviewer"
+KEY_ID = "urn:missionweave:key:reviewer"
+GROUP_ID = "urn:missionweave:group:mission"
+OTHER_GROUP_ID = "urn:missionweave:group:mission-two"
+MISSION_ID = "urn:missionweave:mission:one"
+CONVERSATION_ID = f"{GROUP_ID}:mission"
+WORK_ID = "urn:missionweave:work:resource-usage"
+SESSION_SECRET = b"x" * 32
+
+
+def _decode_base64url(value: str) -> bytes:
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+class FakeCore:
+    def __init__(self) -> None:
+        self.events: list[dict[str, Any]] = []
+        self.session_epoch = 0
+
+    async def current_session_epoch(self, agent_id: str) -> int:
+        assert agent_id == AGENT_ID
+        return self.session_epoch
+
+    async def activate_session(self, agent_id: str, session_epoch: int) -> None:
+        assert agent_id == AGENT_ID
+        assert session_epoch == self.session_epoch + 1
+        self.session_epoch = session_epoch
+
+    async def perform(
+        self,
+        *,
+        actor: str,
+        session_epoch: int,
+        command: dict[str, Any],
+    ) -> dict[str, Any]:
+        group_id = str(command["groupId"])
+        sequence = 1 + sum(event["groupId"] == group_id for event in self.events)
+        payload = command.get("payload", {})
+        emitted_kind = (
+            str(payload.get("emitKind", "message.posted"))
+            if isinstance(payload, dict)
+            else "message.posted"
+        )
+        event = {
+            "protocolVersion": "0.1",
+            "eventId": f"urn:missionweave:event:{len(self.events) + 1}",
+            "groupId": group_id,
+            "sequence": sequence,
+            "aggregateRevision": sequence,
+            "kind": emitted_kind,
+            "actor": {"type": "agent", "id": actor},
+            "cause": {"type": "command", "id": command["actionId"]},
+            "correlationId": command["correlationId"],
+            "occurredAt": "2026-07-15T00:00:01Z",
+            "conversationId": command.get("conversationId"),
+            "payload": {"sessionEpoch": session_epoch},
+            "acceptedBy": {
+                "type": "service",
+                "id": "urn:missionweave:service:group-gateway",
+            },
+            "signature": {
+                "algorithm": "Ed25519",
+                "keyId": "urn:missionweave:key:group-gateway",
+                "createdAt": "2026-07-15T00:00:01Z",
+                "value": "c2lnbmF0dXJl",
+            },
+        }
+        self.events.append(event)
+        return event
+
+    async def replay(
+        self,
+        actor: str,
+        group_id: str,
+        *,
+        after_sequence: int,
+    ) -> list[dict[str, Any]]:
+        assert actor == AGENT_ID
+        return [
+            event
+            for event in self.events
+            if event["groupId"] == group_id and event["sequence"] > after_sequence
+        ]
+
+
+def _authenticate(socket: Any, identity: AgentIdentity) -> WelcomeFrame:
+    socket.send_text(
+        encode_frame(
+            HelloFrame(
+                agent_id=identity.agent_id,
+                key_id=KEY_ID,
+                client_nonce="Y2xpZW50LW5vbmNl",
+            )
+        )
+    )
+    challenge = parse_frame(socket.receive_text())
+    assert isinstance(challenge, ChallengeFrame)
+    socket.send_text(
+        encode_frame(
+            AuthFrame(
+                agent_id=identity.agent_id,
+                key_id=KEY_ID,
+                client_nonce=challenge.client_nonce,
+                server_nonce=challenge.server_nonce,
+                challenge_signature=identity.sign(_decode_base64url(challenge.challenge)),
+            )
+        )
+    )
+    welcome = parse_frame(socket.receive_text())
+    assert isinstance(welcome, WelcomeFrame)
+    return welcome
+
+
+def _unsigned_command(
+    *,
+    action_number: int,
+    session_epoch: int,
+    group_id: str = GROUP_ID,
+    emit_kind: str | None = None,
+    issued_at: str | None = None,
+) -> dict[str, Any]:
+    command_issued_at = issued_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    payload = {
+        "messageId": f"urn:missionweave:message:{action_number}",
+        "content": f"message {action_number}",
+    }
+    if emit_kind is not None:
+        payload["emitKind"] = emit_kind
+    return {
+        "protocolVersion": "0.1",
+        "actionId": f"urn:missionweave:action:{action_number}",
+        "actor": {"type": "agent", "id": AGENT_ID},
+        "sessionEpoch": session_epoch,
+        "membershipEpoch": 1,
+        "groupId": group_id,
+        "conversationId": f"{group_id}:mission",
+        "kind": "message.post",
+        "correlationId": f"urn:missionweave:correlation:{action_number}",
+        "issuedAt": command_issued_at,
+        "payload": payload,
+    }
+
+
+def _signed_command(
+    identity: AgentIdentity,
+    *,
+    action_number: int,
+    session_epoch: int,
+    group_id: str = GROUP_ID,
+    emit_kind: str | None = None,
+    issued_at: str | None = None,
+    signature_key_id: str = KEY_ID,
+    signature_created_at: str | None = None,
+) -> dict[str, Any]:
+    command = _unsigned_command(
+        action_number=action_number,
+        session_epoch=session_epoch,
+        group_id=group_id,
+        emit_kind=emit_kind,
+        issued_at=issued_at,
+    )
+    command["signature"] = {
+        "algorithm": "Ed25519",
+        "keyId": signature_key_id,
+        "createdAt": signature_created_at or command["issuedAt"],
+        "value": identity.sign(canonical_bytes(command)),
+    }
+    return command
+
+
+def _signed_command_with_extensions(
+    identity: AgentIdentity,
+    *,
+    action_number: int,
+    session_epoch: int,
+    extensions: dict[str, Any],
+) -> dict[str, Any]:
+    command = _unsigned_command(
+        action_number=action_number,
+        session_epoch=session_epoch,
+    )
+    command["extensions"] = extensions
+    command["signature"] = {
+        "algorithm": "Ed25519",
+        "keyId": KEY_ID,
+        "createdAt": command["issuedAt"],
+        "value": identity.sign(canonical_bytes(command)),
+    }
+    return command
+
+
+def _card(identity: AgentIdentity) -> AgentCard:
+    return AgentCard(
+        agent_id=identity.agent_id,
+        version=1,
+        display_name="Reviewer",
+        owner="MissionWeave tests",
+        public_key=identity.public_key,
+        capabilities=(Capability(id="code.review", version=1),),
+        issued_at=datetime.now(UTC),
+        signature="organization-signature",
+    )
+
+
+async def _register_card(core: Core, card: AgentCard) -> None:
+    await core.perform(
+        Command(
+            action_id=f"urn:missionweave:action:register:{card.agent_id.rsplit(':', 1)[-1]}",
+            kind=CommandKind.REGISTER_AGENT_CARD,
+            actor=Principal.system("urn:missionweave:service:registry"),
+            issued_at=datetime.now(UTC),
+            payload=RegisterAgentCardPayload(card=card),
+            signature="registry-signature",
+        )
+    )
+
+
+async def _bootstrap_mission(core: Core, card: AgentCard) -> None:
+    await _register_card(core, card)
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:create-mission",
+            kind=CommandKind.CREATE_MISSION,
+            actor=Principal.human("urn:missionweave:human:owner"),
+            group_id=GROUP_ID,
+            issued_at=datetime.now(UTC),
+            payload=CreateMissionPayload(
+                mission_id=MISSION_ID,
+                group_id=GROUP_ID,
+                coordinator_id=card.agent_id,
+                title="Review transport",
+                objective="Prove gateway and Core integration",
+                definition_of_done=("signed message accepted",),
+                deadline=datetime.now(UTC) + timedelta(hours=1),
+            ),
+            signature="owner-signature",
+        )
+    )
+
+
+async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
+    await _register_card(core, card)
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:create-usage-mission",
+            kind=CommandKind.CREATE_MISSION,
+            actor=Principal.human("urn:missionweave:human:owner"),
+            group_id=GROUP_ID,
+            issued_at=datetime.now(UTC),
+            payload=CreateMissionPayload(
+                mission_id=MISSION_ID,
+                group_id=GROUP_ID,
+                coordinator_id=card.agent_id,
+                title="Meter gateway execution",
+                objective="Record authoritative resource usage",
+                definition_of_done=("usage is durably metered",),
+                budget=ResourceBudget(model_tokens=1),
+                deadline=datetime.now(UTC) + timedelta(hours=1),
+            ),
+            signature="owner-signature",
+        )
+    )
+    session = await core.perform(
+        Command(
+            action_id="urn:missionweave:action:open-usage-coordinator-session",
+            kind=CommandKind.OPEN_AGENT_SESSION,
+            actor=Principal.system("urn:missionweave:service:registry"),
+            issued_at=datetime.now(UTC),
+            payload=OpenAgentSessionPayload(agent_id=card.agent_id),
+            signature="registry-signature",
+        )
+    )
+    session_epoch = int(session.payload["sessionEpoch"])
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:add-usage-worker-role",
+            kind=CommandKind.ADD_MEMBERSHIP,
+            actor=Principal.agent(card.agent_id),
+            group_id=GROUP_ID,
+            session_epoch=session_epoch,
+            coordinator_epoch=1,
+            issued_at=datetime.now(UTC),
+            payload=AddMembershipPayload(
+                principal=Principal.agent(card.agent_id),
+                roles=(Role.WORKER,),
+            ),
+            signature="coordinator-signature",
+        )
+    )
+    contract = WorkContract(
+        goal="Consume exactly one model token",
+        deliverables=("usage event",),
+        acceptance_criteria=("usage delta is authoritative",),
+        budget=ResourceBudget(model_tokens=1),
+        deadline=datetime.now(UTC) + timedelta(minutes=30),
+    )
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:create-usage-work",
+            kind=CommandKind.CREATE_WORK_ITEM,
+            actor=Principal.agent(card.agent_id),
+            group_id=GROUP_ID,
+            session_epoch=session_epoch,
+            coordinator_epoch=1,
+            issued_at=datetime.now(UTC),
+            payload=CreateWorkItemPayload(work_item_id=WORK_ID, contract=contract),
+            signature="coordinator-signature",
+        )
+    )
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:offer-usage-work",
+            kind=CommandKind.OFFER_WORK_ITEM,
+            actor=Principal.agent(card.agent_id),
+            group_id=GROUP_ID,
+            session_epoch=session_epoch,
+            coordinator_epoch=1,
+            issued_at=datetime.now(UTC),
+            payload=OfferWorkItemPayload(
+                work_item_id=WORK_ID,
+                candidate_agent_ids=(card.agent_id,),
+                selection_basis=SelectionBasis(),
+            ),
+            signature="coordinator-signature",
+        )
+    )
+
+
+def _signed_work_command(
+    identity: AgentIdentity,
+    *,
+    action_number: int,
+    session_epoch: int,
+    kind: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    issued_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    command: dict[str, Any] = {
+        "protocolVersion": "0.1",
+        "actionId": f"urn:missionweave:action:usage:{action_number}",
+        "actor": {"type": "agent", "id": identity.agent_id},
+        "sessionEpoch": session_epoch,
+        "membershipEpoch": 2,
+        "groupId": GROUP_ID,
+        "workItemId": WORK_ID,
+        "kind": kind,
+        "correlationId": f"urn:missionweave:correlation:usage:{action_number}",
+        "issuedAt": issued_at,
+        "payload": payload,
+    }
+    command["signature"] = {
+        "algorithm": "Ed25519",
+        "keyId": KEY_ID,
+        "createdAt": issued_at,
+        "value": identity.sign(canonical_bytes(command)),
+    }
+    return command
+
+
+async def _add_active_member(
+    core: Core,
+    *,
+    coordinator: AgentCard,
+    member: AgentCard,
+    visibility_after_sequence: int,
+) -> None:
+    await _register_card(core, member)
+    session = await core.perform(
+        Command(
+            action_id="urn:missionweave:action:open-coordinator-session",
+            kind=CommandKind.OPEN_AGENT_SESSION,
+            actor=Principal.system("urn:missionweave:service:registry"),
+            issued_at=datetime.now(UTC),
+            payload=OpenAgentSessionPayload(agent_id=coordinator.agent_id),
+            signature="registry-signature",
+        )
+    )
+    await core.perform(
+        Command(
+            action_id="urn:missionweave:action:add-late-member",
+            kind=CommandKind.ADD_MEMBERSHIP,
+            actor=Principal.agent(coordinator.agent_id),
+            group_id=GROUP_ID,
+            session_epoch=int(session.payload["sessionEpoch"]),
+            coordinator_epoch=1,
+            issued_at=datetime.now(UTC),
+            payload=AddMembershipPayload(
+                principal=Principal.agent(member.agent_id),
+                roles=(Role.WORKER,),
+                provisional=False,
+                visibility_after_sequence=visibility_after_sequence,
+            ),
+            signature="coordinator-signature",
+        )
+    )
+
+
+def test_authenticated_session_multiplexes_command_event_and_replay() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    core = FakeCore()
+    gateway = GroupGateway(core, SessionAuthority(keys, secret=SESSION_SECRET))
+
+    with TestClient(gateway.app) as client:
+        with client.websocket_connect("/ws") as socket:
+            welcome = _authenticate(socket, identity)
+            socket.send_text(
+                encode_frame(
+                    SubscribeFrame(
+                        subscription_id="urn:missionweave:subscription:one",
+                        groups=(GroupCursor(group_id=GROUP_ID),),
+                    )
+                )
+            )
+            socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=1,
+                            session_epoch=welcome.session_epoch,
+                        )
+                    )
+                )
+            )
+            event = parse_frame(socket.receive_text())
+            assert isinstance(event, EventFrame)
+            assert event.event["actor"] == {"type": "agent", "id": identity.agent_id}
+            assert event.event["sequence"] == 1
+
+        with client.websocket_connect("/ws") as replay_socket:
+            _authenticate(replay_socket, identity)
+            replay_socket.send_text(
+                encode_frame(
+                    SubscribeFrame(
+                        subscription_id="urn:missionweave:subscription:two",
+                        groups=(GroupCursor(group_id=GROUP_ID),),
+                    )
+                )
+            )
+            replayed = parse_frame(replay_socket.receive_text())
+            assert isinstance(replayed, EventFrame)
+            assert replayed.event["eventId"] == "urn:missionweave:event:1"
+
+
+def test_hello_rejects_an_unregistered_key_id() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    gateway = GroupGateway(FakeCore(), SessionAuthority(keys, secret=SESSION_SECRET))
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        socket.send_text(
+            encode_frame(
+                HelloFrame(
+                    agent_id=identity.agent_id,
+                    key_id="urn:missionweave:key:unregistered",
+                    client_nonce="Y2xpZW50LW5vbmNl",
+                )
+            )
+        )
+        rejected = parse_frame(socket.receive_text())
+
+    assert isinstance(rejected, ErrorFrame)
+    assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+
+
+def test_command_key_id_must_match_the_authenticated_key() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    gateway = GroupGateway(FakeCore(), SessionAuthority(keys, secret=SESSION_SECRET))
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_command(
+                        identity,
+                        action_number=2,
+                        session_epoch=welcome.session_epoch,
+                        signature_key_id="urn:missionweave:key:other",
+                    )
+                )
+            )
+        )
+        rejected = parse_frame(socket.receive_text())
+
+    assert isinstance(rejected, ErrorFrame)
+    assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+    assert "key ID" in rejected.error.message
+
+
+def test_command_timestamp_must_be_inside_the_authenticated_session() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    gateway = GroupGateway(FakeCore(), SessionAuthority(keys, secret=SESSION_SECRET))
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_command(
+                        identity,
+                        action_number=3,
+                        session_epoch=welcome.session_epoch,
+                        issued_at="2000-01-01T00:00:00Z",
+                    )
+                )
+            )
+        )
+        rejected = parse_frame(socket.receive_text())
+
+    assert isinstance(rejected, ErrorFrame)
+    assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+    assert "outside" in rejected.error.message
+
+
+def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    store = InMemoryStore()
+    core = Core(store)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, card)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with (
+        TestClient(gateway.app) as client,
+        client.websocket_connect("/ws") as original_socket,
+    ):
+        original = _authenticate(original_socket, identity)
+        original_socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:real",
+                    groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
+                )
+            )
+        )
+        original_socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_command(
+                        identity,
+                        action_number=10,
+                        session_epoch=original.session_epoch,
+                    )
+                )
+            )
+        )
+        accepted = parse_frame(original_socket.receive_text())
+        assert isinstance(accepted, EventFrame)
+        assert accepted.event["kind"] == "message.posted"
+
+        with client.websocket_connect("/ws") as replacement_socket:
+            replacement = _authenticate(replacement_socket, identity)
+            assert replacement.session_epoch == original.session_epoch + 1
+
+            original_socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=11,
+                            session_epoch=original.session_epoch,
+                        )
+                    )
+                )
+            )
+            fenced = parse_frame(original_socket.receive_text())
+            assert isinstance(fenced, ErrorFrame)
+            assert fenced.error.code is ErrorCode.AUTH_STALE_SESSION
+
+    stale_command = _signed_command(
+        identity,
+        action_number=12,
+        session_epoch=original.session_epoch,
+    )
+    with pytest.raises(StaleSessionEpoch):
+        asyncio.run(
+            adapter.perform(
+                actor=identity.agent_id,
+                session_epoch=original.session_epoch,
+                command=stale_command,
+            )
+        )
+
+
+def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    authority_private_key, authority_public_key = generate_keypair()
+    authority_key_id = "urn:missionweave:key:usage-authority"
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        authority_key_id=authority_key_id,
+        authority_private_key=authority_private_key,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_resource_usage_work(core, card)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:resource-usage",
+                    groups=(GroupCursor(group_id=GROUP_ID, after_sequence=4),),
+                )
+            )
+        )
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_work_command(
+                        identity,
+                        action_number=100,
+                        session_epoch=welcome.session_epoch,
+                        kind=CommandKind.ACCEPT_WORK_OFFER.value,
+                        payload={
+                            "workItemId": WORK_ID,
+                            "ownershipLeaseSeconds": 600,
+                        },
+                    )
+                )
+            )
+        )
+        accepted_offer = parse_frame(socket.receive_text())
+        assert isinstance(accepted_offer, EventFrame)
+        assert accepted_offer.event["kind"] == "work.offer.accepted"
+
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_work_command(
+                        identity,
+                        action_number=101,
+                        session_epoch=welcome.session_epoch,
+                        kind=CommandKind.START_WORK_ITEM.value,
+                        payload={
+                            "workItemId": WORK_ID,
+                            "ownershipEpoch": 1,
+                            "executionLeaseSeconds": 300,
+                        },
+                    )
+                )
+            )
+        )
+        started = parse_frame(socket.receive_text())
+        assert isinstance(started, EventFrame)
+        execution_lease = started.event["payload"]["executionLease"]
+        assert isinstance(execution_lease, dict)
+        execution_lease_id = execution_lease["leaseId"]
+        assert isinstance(execution_lease_id, str)
+
+        usage_payload = {
+            "workItemId": WORK_ID,
+            "ownershipEpoch": 1,
+            "executionLeaseId": execution_lease_id,
+            "usageDelta": {"modelTokens": 1},
+        }
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_work_command(
+                        identity,
+                        action_number=102,
+                        session_epoch=welcome.session_epoch,
+                        kind=CommandKind.RECORD_RESOURCE_USAGE.value,
+                        payload=usage_payload,
+                    )
+                )
+            )
+        )
+        usage_recorded = parse_frame(socket.receive_text())
+        assert isinstance(usage_recorded, EventFrame)
+        assert usage_recorded.event["kind"] == "ext.missionweave.core.resource_usage_recorded"
+        assert usage_recorded.event["payload"]["usageDelta"]["modelTokens"] == 1
+        assert usage_recorded.event["payload"]["remainingBudget"]["modelTokens"] == 0
+        event_signature = usage_recorded.event["signature"]
+        assert isinstance(event_signature, dict)
+        assert event_signature["keyId"] == authority_key_id
+        unsigned_event = dict(usage_recorded.event)
+        del unsigned_event["signature"]
+        assert verify_canonical(
+            unsigned_event,
+            str(event_signature["value"]),
+            authority_public_key,
+        )
+
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_work_command(
+                        identity,
+                        action_number=103,
+                        session_epoch=welcome.session_epoch,
+                        kind=CommandKind.RECORD_RESOURCE_USAGE.value,
+                        payload=usage_payload,
+                    )
+                )
+            )
+        )
+        overflow = parse_frame(socket.receive_text())
+        assert isinstance(overflow, ErrorFrame)
+        assert overflow.error.code is ErrorCode.BUDGET_EXCEEDED
+
+        with client.websocket_connect("/ws") as tampered_socket:
+            replacement = _authenticate(tampered_socket, identity)
+            tampered = _signed_work_command(
+                identity,
+                action_number=104,
+                session_epoch=replacement.session_epoch,
+                kind=CommandKind.RECORD_RESOURCE_USAGE.value,
+                payload=usage_payload,
+            )
+            tampered_payload = tampered["payload"]
+            assert isinstance(tampered_payload, dict)
+            usage_delta = tampered_payload["usageDelta"]
+            assert isinstance(usage_delta, dict)
+            usage_delta["modelTokens"] = 2
+            tampered_socket.send_text(encode_frame(CommandFrame(command=tampered)))
+            rejected = parse_frame(tampered_socket.receive_text())
+            assert isinstance(rejected, ErrorFrame)
+            assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+
+
+def test_gateway_restart_seeds_token_epoch_from_authoritative_core() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    core = Core(InMemoryStore())
+    asyncio.run(_register_card(core, _card(identity)))
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    first = GroupGateway(adapter, SessionAuthority(keys, secret=SESSION_SECRET))
+    with TestClient(first.app) as client, client.websocket_connect("/ws") as socket:
+        first_welcome = _authenticate(socket, identity)
+    assert first_welcome.session_epoch == 1
+
+    restarted = GroupGateway(adapter, SessionAuthority(keys, secret=SESSION_SECRET))
+    with TestClient(restarted.app) as client, client.websocket_connect("/ws") as socket:
+        restarted_welcome = _authenticate(socket, identity)
+    assert restarted_welcome.session_epoch == 2
+    assert (
+        asyncio.run(core.query(Query(kind=QueryKind.SESSION_EPOCH, entity_id=identity.agent_id)))
+        == 2
+    )
+
+
+def test_one_connection_multiplexes_groups_and_filters_replay_and_live_events() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    gateway = GroupGateway(
+        FakeCore(),
+        SessionAuthority(keys, secret=SESSION_SECRET),
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        for action_number, emitted_kind in ((40, "work.started"), (41, "message.posted")):
+            socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=action_number,
+                            session_epoch=welcome.session_epoch,
+                            emit_kind=emitted_kind,
+                        )
+                    )
+                )
+            )
+
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:multiplexed",
+                    groups=(
+                        GroupCursor(
+                            group_id=GROUP_ID,
+                            attention=AttentionFilter(event_kinds=("message.posted",)),
+                        ),
+                        GroupCursor(group_id=OTHER_GROUP_ID),
+                    ),
+                )
+            )
+        )
+        filtered_replay = parse_frame(socket.receive_text())
+        assert isinstance(filtered_replay, EventFrame)
+        assert filtered_replay.event["kind"] == "message.posted"
+        assert filtered_replay.event["cause"] == {
+            "type": "command",
+            "id": "urn:missionweave:action:41",
+        }
+
+        for action_number, group_id, emitted_kind in (
+            (42, GROUP_ID, "work.started"),
+            (43, OTHER_GROUP_ID, "message.posted"),
+            (44, GROUP_ID, "message.posted"),
+        ):
+            socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=action_number,
+                            session_epoch=welcome.session_epoch,
+                            group_id=group_id,
+                            emit_kind=emitted_kind,
+                        )
+                    )
+                )
+            )
+
+        delivered = [parse_frame(socket.receive_text()), parse_frame(socket.receive_text())]
+        assert all(isinstance(frame, EventFrame) for frame in delivered)
+        assert [frame.event["groupId"] for frame in delivered if isinstance(frame, EventFrame)] == [
+            OTHER_GROUP_ID,
+            GROUP_ID,
+        ]
+
+
+def test_subscription_denies_non_member_without_disclosing_group_existence() -> None:
+    coordinator_identity = AgentIdentity.generate(AGENT_ID)
+    intruder = AgentIdentity.generate("urn:missionweave:agent:intruder")
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    for identity in (coordinator_identity, intruder):
+        keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, _card(coordinator_identity))
+        await _register_card(core, _card(intruder))
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        _authenticate(socket, intruder)
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:unauthorized",
+                    groups=(GroupCursor(group_id=GROUP_ID),),
+                )
+            )
+        )
+        denied = parse_frame(socket.receive_text())
+
+    assert isinstance(denied, ErrorFrame)
+    assert denied.error.code is ErrorCode.MEMBERSHIP_REQUIRED
+    assert GROUP_ID not in denied.error.message
+
+
+def test_late_member_replay_starts_after_membership_visibility_sequence() -> None:
+    coordinator_identity = AgentIdentity.generate(AGENT_ID)
+    late_identity = AgentIdentity.generate("urn:missionweave:agent:late-worker")
+    coordinator = _card(coordinator_identity)
+    late_member = _card(late_identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    for identity in (coordinator_identity, late_identity):
+        keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, coordinator)
+        await _add_active_member(
+            core,
+            coordinator=coordinator,
+            member=late_member,
+            visibility_after_sequence=1,
+        )
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        _authenticate(socket, late_identity)
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:late-member",
+                    groups=(GroupCursor(group_id=GROUP_ID, after_sequence=0),),
+                )
+            )
+        )
+        first_visible = parse_frame(socket.receive_text())
+
+    assert isinstance(first_visible, EventFrame)
+    assert first_visible.event["sequence"] == 2
+    assert first_visible.event["kind"] == "membership.changed"
+
+
+def test_websocket_disconnect_reconnect_replays_only_after_durable_ack() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, card)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client:
+        with client.websocket_connect("/ws") as socket:
+            welcome = _authenticate(socket, identity)
+            socket.send_text(
+                encode_frame(
+                    SubscribeFrame(
+                        subscription_id="urn:missionweave:subscription:before-disconnect",
+                        groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
+                    )
+                )
+            )
+            socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=50,
+                            session_epoch=welcome.session_epoch,
+                        )
+                    )
+                )
+            )
+            acknowledged = parse_frame(socket.receive_text())
+            assert isinstance(acknowledged, EventFrame)
+            assert acknowledged.event["sequence"] == 2
+            socket.send_text(
+                encode_frame(
+                    AckFrame(
+                        acknowledgements=(Acknowledgement(group_id=GROUP_ID, sequence=2),),
+                        sent_at=datetime.now(UTC),
+                    )
+                )
+            )
+            socket.send_text(
+                encode_frame(
+                    CommandFrame(
+                        command=_signed_command(
+                            identity,
+                            action_number=51,
+                            session_epoch=welcome.session_epoch,
+                        )
+                    )
+                )
+            )
+            unacknowledged = parse_frame(socket.receive_text())
+            assert isinstance(unacknowledged, EventFrame)
+            assert unacknowledged.event["sequence"] == 3
+
+        with client.websocket_connect("/ws") as reconnected:
+            _authenticate(reconnected, identity)
+            reconnected.send_text(
+                encode_frame(
+                    SubscribeFrame(
+                        subscription_id="urn:missionweave:subscription:after-disconnect",
+                        groups=(GroupCursor(group_id=GROUP_ID, after_sequence=0),),
+                    )
+                )
+            )
+            replayed = parse_frame(reconnected.receive_text())
+
+    assert isinstance(replayed, EventFrame)
+    assert replayed.event["sequence"] == 3
+    assert replayed.event["eventId"] == unacknowledged.event["eventId"]
+
+
+@pytest.mark.asyncio
+async def test_adapter_schema_validates_command_before_translation() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(Core(InMemoryStore()), keys)
+
+    with pytest.raises(GatewaySchemaError, match=r"command\.schema\.json"):
+        await adapter.perform(
+            actor=identity.agent_id,
+            session_epoch=1,
+            command={"protocolVersion": "0.1"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_adapter_preserves_unknown_noncritical_extension_without_core_overrides() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+    extensions = {
+        "https://profiles.example/audit": {
+            "version": "1.2.3",
+            "critical": False,
+            "data": {
+                "kind": "mission.approved",
+                "actor": {"type": "human", "id": "urn:missionweave:human:forged"},
+                "groupId": "urn:missionweave:group:forged",
+                "sequence": 999,
+                "payload": {"forged": True},
+                "acceptedBy": {"type": "service", "id": "urn:missionweave:service:forged"},
+                "signature": {"value": "forged"},
+                " opaque key ": "  preserve opaque whitespace  ",
+            },
+        }
+    }
+
+    await _bootstrap_mission(core, card)
+    await adapter.activate_session(identity.agent_id, 1)
+    command = _signed_command_with_extensions(
+        identity,
+        action_number=90,
+        session_epoch=1,
+        extensions=extensions,
+    )
+    event = await adapter.perform(
+        actor=identity.agent_id,
+        session_epoch=1,
+        command=command,
+    )
+
+    assert event["kind"] == "message.posted"
+    assert event["actor"] == {"type": "agent", "id": identity.agent_id}
+    assert event["groupId"] == GROUP_ID
+    assert event["sequence"] != 999
+    assert event["payload"]["message"]["content"] == "message 90"  # type: ignore[index]
+    assert event["acceptedBy"] == {
+        "type": "service",
+        "id": "urn:missionweave:service:group-gateway",
+    }
+    assert event["signature"] != {"value": "forged"}
+    assert event["extensions"] == extensions
+
+    duplicate = await adapter.perform(
+        actor=identity.agent_id,
+        session_epoch=1,
+        command=command,
+    )
+    sequence = event["sequence"]
+    assert isinstance(sequence, int)
+    replayed = await adapter.replay(
+        identity.agent_id,
+        GROUP_ID,
+        after_sequence=sequence - 1,
+    )
+
+    assert duplicate["eventId"] == event["eventId"]
+    assert duplicate["extensions"] == extensions
+    assert [item["eventId"] for item in replayed] == [event["eventId"]]
+    assert replayed[0]["extensions"] == extensions
+
+
+def test_unknown_critical_extension_returns_specific_wire_error() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, card)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweave:subscription:critical-extension",
+                    groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
+                )
+            )
+        )
+        socket.send_text(
+            encode_frame(
+                CommandFrame(
+                    command=_signed_command_with_extensions(
+                        identity,
+                        action_number=91,
+                        session_epoch=welcome.session_epoch,
+                        extensions={
+                            "https://profiles.example/required": {
+                                "version": "2.0.0",
+                                "critical": True,
+                                "data": {"policy": "required"},
+                            }
+                        },
+                    )
+                )
+            )
+        )
+        rejected = parse_frame(socket.receive_text())
+
+    assert isinstance(rejected, ErrorFrame)
+    assert rejected.error.code is ErrorCode.UNKNOWN_CRITICAL_EXTENSION
+
+
+@pytest.mark.asyncio
+async def test_critical_extension_requires_exact_configured_profile_version() -> None:
+    profile_uri = "https://profiles.example/required"
+    identity = AgentIdentity.generate(AGENT_ID)
+    card = _card(identity)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        supported_profiles={profile_uri: "2.0.0"},
+    )
+
+    await _bootstrap_mission(core, card)
+    await adapter.activate_session(identity.agent_id, 1)
+    accepted_extensions = {
+        profile_uri: {
+            "version": "2.0.0",
+            "critical": True,
+            "data": {"policy": "required"},
+        }
+    }
+    accepted = await adapter.perform(
+        actor=identity.agent_id,
+        session_epoch=1,
+        command=_signed_command_with_extensions(
+            identity,
+            action_number=92,
+            session_epoch=1,
+            extensions=accepted_extensions,
+        ),
+    )
+
+    assert accepted["extensions"] == accepted_extensions
+
+    with pytest.raises(UnknownCriticalExtension) as caught:
+        await adapter.perform(
+            actor=identity.agent_id,
+            session_epoch=1,
+            command=_signed_command_with_extensions(
+                identity,
+                action_number=93,
+                session_epoch=1,
+                extensions={
+                    profile_uri: {
+                        "version": "2.0.1",
+                        "critical": True,
+                        "data": {"policy": "required"},
+                    }
+                },
+            ),
+        )
+
+    assert caught.value.details == {
+        "profileUri": profile_uri,
+        "receivedVersion": "2.0.1",
+        "supportedVersion": "2.0.0",
+    }
