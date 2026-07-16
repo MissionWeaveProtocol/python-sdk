@@ -1,0 +1,20 @@
+{
+  "approvalId": "urn:missionweave:approval:invalid-agent-final",
+  "kind": "mission_final",
+  "decision": "approved",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "missionRevision": 9,
+  "artifactHashes": ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  "acceptancePolicyVersion": "1.2.0",
+  "approver": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "comments": "Self-approved.",
+  "conditions": [],
+  "occurredAt": "2026-07-15T04:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:coordinator",
+    "createdAt": "2026-07-15T04:00:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

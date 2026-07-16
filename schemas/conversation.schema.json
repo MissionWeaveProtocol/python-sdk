@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/conversation.schema.json",
+  "title": "MissionWeave 0.1 Conversation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "conversationId",
+    "missionId",
+    "groupId",
+    "type",
+    "title",
+    "access",
+    "createdBy",
+    "createdAt",
+    "state",
+    "revision"
+  ],
+  "properties": {
+    "conversationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "type": {
+      "enum": ["group", "work_item", "review", "restricted"]
+    },
+    "primaryWorkItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["group", "restricted"]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/actor"
+          },
+          "minItems": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"mode": {"const": "restricted"}},
+            "required": ["mode"]
+          },
+          "then": {
+            "required": ["members"]
+          }
+        }
+      ]
+    },
+    "createdBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "state": {
+      "enum": ["active", "closed"]
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"type": {"const": "work_item"}},
+        "required": ["type"]
+      },
+      "then": {
+        "required": ["primaryWorkItemId"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "restricted"}},
+        "required": ["type"]
+      },
+      "then": {
+        "properties": {
+          "access": {
+            "properties": {"mode": {"const": "restricted"}}
+          }
+        }
+      }
+    }
+  ]
+}

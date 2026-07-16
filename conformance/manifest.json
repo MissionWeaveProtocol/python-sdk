@@ -1,0 +1,260 @@
+[
+  {
+    "name": "valid command envelope",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/valid/command.json",
+    "valid": true
+  },
+  {
+    "name": "valid event envelope",
+    "schema": "schemas/event.schema.json",
+    "instance": "conformance/vectors/valid/event.json",
+    "valid": true
+  },
+  {
+    "name": "valid multiplexed WebSocket subscription",
+    "schema": "schemas/websocket-frame.schema.json",
+    "instance": "conformance/vectors/valid/websocket-frame.json",
+    "valid": true
+  },
+  {
+    "name": "valid Agent Card",
+    "schema": "schemas/agent-card.schema.json",
+    "instance": "conformance/vectors/valid/agent-card.json",
+    "valid": true
+  },
+  {
+    "name": "valid Presence Record",
+    "schema": "schemas/presence-record.schema.json",
+    "instance": "conformance/vectors/valid/presence-record.json",
+    "valid": true
+  },
+  {
+    "name": "valid Mission",
+    "schema": "schemas/mission.schema.json",
+    "instance": "conformance/vectors/valid/mission.json",
+    "valid": true
+  },
+  {
+    "name": "valid child Mission owned by Parent Coordinator",
+    "schema": "schemas/mission.schema.json",
+    "instance": "conformance/vectors/valid/child-mission.json",
+    "valid": true
+  },
+  {
+    "name": "valid provisional Membership",
+    "schema": "schemas/membership.schema.json",
+    "instance": "conformance/vectors/valid/membership.json",
+    "valid": true
+  },
+  {
+    "name": "valid WorkItem Conversation",
+    "schema": "schemas/conversation.schema.json",
+    "instance": "conformance/vectors/valid/conversation.json",
+    "valid": true
+  },
+  {
+    "name": "valid non-authoritative Message",
+    "schema": "schemas/message.schema.json",
+    "instance": "conformance/vectors/valid/message.json",
+    "valid": true
+  },
+  {
+    "name": "valid Work Contract",
+    "schema": "schemas/work-contract.schema.json",
+    "instance": "conformance/vectors/valid/work-contract.json",
+    "valid": true
+  },
+  {
+    "name": "valid queued WorkItem",
+    "schema": "schemas/work-item.schema.json",
+    "instance": "conformance/vectors/valid/work-item.json",
+    "valid": true
+  },
+  {
+    "name": "valid Artifact manifest",
+    "schema": "schemas/artifact.schema.json",
+    "instance": "conformance/vectors/valid/artifact.json",
+    "valid": true
+  },
+  {
+    "name": "valid Evidence record",
+    "schema": "schemas/evidence.schema.json",
+    "instance": "conformance/vectors/valid/evidence.json",
+    "valid": true
+  },
+  {
+    "name": "valid terminal fenced Execution Lease",
+    "schema": "schemas/lease.schema.json",
+    "instance": "conformance/vectors/valid/lease.json",
+    "valid": true
+  },
+  {
+    "name": "valid final human Approval",
+    "schema": "schemas/approval.schema.json",
+    "instance": "conformance/vectors/valid/approval.json",
+    "valid": true
+  },
+  {
+    "name": "valid child Mission Approval by Parent Coordinator",
+    "schema": "schemas/approval.schema.json",
+    "instance": "conformance/vectors/valid/child-approval.json",
+    "valid": true
+  },
+  {
+    "name": "valid provenance-bearing Context Package",
+    "schema": "schemas/context-package.schema.json",
+    "instance": "conformance/vectors/valid/context-package.json",
+    "valid": true
+  },
+  {
+    "name": "valid governed Extension Profile",
+    "schema": "schemas/extension-profile.schema.json",
+    "instance": "conformance/vectors/valid/extension-profile.json",
+    "valid": true
+  },
+  {
+    "name": "valid protocol error",
+    "schema": "schemas/error.schema.json",
+    "instance": "conformance/vectors/valid/error.json",
+    "valid": true
+  },
+  {
+    "name": "invalid unsigned durable Command",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/command-missing-signature.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Event sequence zero",
+    "schema": "schemas/event.schema.json",
+    "instance": "conformance/vectors/invalid/event-zero-sequence.json",
+    "valid": false
+  },
+  {
+    "name": "invalid partial Message streaming frame",
+    "schema": "schemas/websocket-frame.schema.json",
+    "instance": "conformance/vectors/invalid/websocket-partial-stream.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Agent Card containing permissions",
+    "schema": "schemas/agent-card.schema.json",
+    "instance": "conformance/vectors/invalid/agent-card-with-permissions.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Presence Record containing credentials",
+    "schema": "schemas/presence-record.schema.json",
+    "instance": "conformance/vectors/invalid/presence-with-credentials.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Mission without final human Approval",
+    "schema": "schemas/mission.schema.json",
+    "instance": "conformance/vectors/invalid/mission-without-final-human-approval.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Mission legacy completed state",
+    "schema": "schemas/mission.schema.json",
+    "instance": "conformance/vectors/invalid/mission-legacy-completed-state.json",
+    "valid": false
+  },
+  {
+    "name": "invalid provisional Membership without Context Package",
+    "schema": "schemas/membership.schema.json",
+    "instance": "conformance/vectors/invalid/membership-provisional-without-context.json",
+    "valid": false
+  },
+  {
+    "name": "invalid WorkItem Conversation without primary WorkItem",
+    "schema": "schemas/conversation.schema.json",
+    "instance": "conformance/vectors/invalid/conversation-work-item-without-primary.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Message claiming executable authority",
+    "schema": "schemas/message.schema.json",
+    "instance": "conformance/vectors/invalid/message-authorizes-action.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Work Contract without acceptance criteria",
+    "schema": "schemas/work-contract.schema.json",
+    "instance": "conformance/vectors/invalid/work-contract-without-acceptance.json",
+    "valid": false
+  },
+  {
+    "name": "invalid active WorkItem without owner",
+    "schema": "schemas/work-item.schema.json",
+    "instance": "conformance/vectors/invalid/work-item-active-without-owner.json",
+    "valid": false
+  },
+  {
+    "name": "invalid WorkItem legacy accepted state",
+    "schema": "schemas/work-item.schema.json",
+    "instance": "conformance/vectors/invalid/work-item-legacy-accepted-state.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Artifact with inline content",
+    "schema": "schemas/artifact.schema.json",
+    "instance": "conformance/vectors/invalid/artifact-with-inline-content.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Evidence without acceptance criterion mapping",
+    "schema": "schemas/evidence.schema.json",
+    "instance": "conformance/vectors/invalid/evidence-without-criteria.json",
+    "valid": false
+  },
+  {
+    "name": "invalid renewed Execution Lease without renewal timestamp",
+    "schema": "schemas/lease.schema.json",
+    "instance": "conformance/vectors/invalid/lease-renewed-without-timestamp.json",
+    "valid": false
+  },
+  {
+    "name": "invalid final Approval by an Agent",
+    "schema": "schemas/approval.schema.json",
+    "instance": "conformance/vectors/invalid/approval-final-by-agent.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Context Package without Event provenance",
+    "schema": "schemas/context-package.schema.json",
+    "instance": "conformance/vectors/invalid/context-package-without-event-provenance.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Extension Profile overriding core invariants",
+    "schema": "schemas/extension-profile.schema.json",
+    "instance": "conformance/vectors/invalid/extension-overrides-core.json",
+    "valid": false
+  },
+  {
+    "name": "valid Mission Group",
+    "schema": "schemas/group.schema.json",
+    "instance": "conformance/vectors/valid/group.json",
+    "valid": true
+  },
+  {
+    "name": "invalid archived Group without signed snapshot",
+    "schema": "schemas/group.schema.json",
+    "instance": "conformance/vectors/invalid/group-archived-without-snapshot.json",
+    "valid": false
+  },
+  {
+    "name": "valid signed Group snapshot",
+    "schema": "schemas/group-snapshot.schema.json",
+    "instance": "conformance/vectors/valid/group-snapshot.json",
+    "valid": true
+  },
+  {
+    "name": "invalid Group snapshot without policy log",
+    "schema": "schemas/group-snapshot.schema.json",
+    "instance": "conformance/vectors/invalid/group-snapshot-without-policy-log.json",
+    "valid": false
+  }
+]

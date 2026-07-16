@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/context-package.schema.json",
+  "title": "MissionWeave 0.1 Context Package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contextPackageId",
+    "version",
+    "missionId",
+    "groupId",
+    "sourceEventRange",
+    "artifactHashes",
+    "summary",
+    "decisions",
+    "constraints",
+    "unresolvedQuestions",
+    "generatedBy",
+    "generatedAt",
+    "signature"
+  ],
+  "properties": {
+    "contextPackageId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "previousContextPackageId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "sourceEventRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromSequence", "toSequence", "eventIds"],
+      "properties": {
+        "fromSequence": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "toSequence": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "artifactHashes": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sha256"
+      },
+      "uniqueItems": true
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50000
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "sourceEventIds"],
+        "properties": {
+          "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "sourceEventIds": {
+            "type": "array",
+            "items": {"$ref": "common.schema.json#/$defs/id"},
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 4000}
+    },
+    "unresolvedQuestions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 4000}
+    },
+    "generatedBy": {
+      "$ref": "common.schema.json#/$defs/agentActor"
+    },
+    "generatedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

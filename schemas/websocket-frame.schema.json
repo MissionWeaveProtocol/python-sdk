@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/websocket-frame.schema.json",
+  "title": "MissionWeave 0.1 WebSocket Frame",
+  "oneOf": [
+    {"$ref": "#/$defs/helloClientInit"},
+    {"$ref": "#/$defs/helloServerChallenge"},
+    {"$ref": "#/$defs/helloClientResponse"},
+    {"$ref": "#/$defs/helloServerAccept"},
+    {"$ref": "#/$defs/subscribe"},
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/event"},
+    {"$ref": "#/$defs/ack"},
+    {"$ref": "#/$defs/ping"},
+    {"$ref": "#/$defs/error"}
+  ],
+  "$defs": {
+    "helloClientInit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "frameId",
+        "frameType",
+        "phase",
+        "agentId",
+        "keyId",
+        "clientNonce",
+        "supportedVersions"
+      ],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "HELLO"},
+        "phase": {"const": "client_init"},
+        "agentId": {"$ref": "common.schema.json#/$defs/id"},
+        "keyId": {"$ref": "common.schema.json#/$defs/id"},
+        "clientNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "supportedVersions": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "helloServerChallenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "frameId",
+        "frameType",
+        "phase",
+        "selectedVersion",
+        "clientNonce",
+        "serverNonce",
+        "challenge"
+      ],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "HELLO"},
+        "phase": {"const": "server_challenge"},
+        "selectedVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "clientNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "serverNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "challenge": {"$ref": "common.schema.json#/$defs/base64url"}
+      }
+    },
+    "helloClientResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "frameId",
+        "frameType",
+        "phase",
+        "agentId",
+        "keyId",
+        "clientNonce",
+        "serverNonce",
+        "challengeSignature"
+      ],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "HELLO"},
+        "phase": {"const": "client_response"},
+        "agentId": {"$ref": "common.schema.json#/$defs/id"},
+        "keyId": {"$ref": "common.schema.json#/$defs/id"},
+        "clientNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "serverNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "challengeSignature": {"$ref": "common.schema.json#/$defs/base64url"}
+      }
+    },
+    "helloServerAccept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "frameId",
+        "frameType",
+        "phase",
+        "selectedVersion",
+        "sessionToken",
+        "sessionEpoch",
+        "expiresAt"
+      ],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "HELLO"},
+        "phase": {"const": "server_accept"},
+        "selectedVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "sessionToken": {"type": "string", "minLength": 16, "maxLength": 8192},
+        "sessionEpoch": {"$ref": "common.schema.json#/$defs/positiveInteger"},
+        "expiresAt": {"$ref": "common.schema.json#/$defs/timestamp"}
+      }
+    },
+    "subscribe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "subscriptionId", "groups"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "SUBSCRIBE"},
+        "subscriptionId": {"$ref": "common.schema.json#/$defs/id"},
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["groupId", "afterSequence"],
+            "properties": {
+              "groupId": {"$ref": "common.schema.json#/$defs/id"},
+              "afterSequence": {"$ref": "common.schema.json#/$defs/safeInteger"},
+              "attention": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "eventKinds": {
+                    "type": "array",
+                    "items": {"$ref": "common.schema.json#/$defs/kind"},
+                    "uniqueItems": true
+                  },
+                  "conversationIds": {
+                    "type": "array",
+                    "items": {"$ref": "common.schema.json#/$defs/id"},
+                    "uniqueItems": true
+                  },
+                  "workItemIds": {
+                    "type": "array",
+                    "items": {"$ref": "common.schema.json#/$defs/id"},
+                    "uniqueItems": true
+                  },
+                  "mentionsOnly": {"type": "boolean"},
+                  "announcements": {"type": "boolean"}
+                }
+              }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "command"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "COMMAND"},
+        "command": {"$ref": "command.schema.json"}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "event"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "EVENT"},
+        "event": {"$ref": "event.schema.json"}
+      }
+    },
+    "ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "acknowledgements", "sentAt"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "ACK"},
+        "acknowledgements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["groupId", "sequence"],
+            "properties": {
+              "groupId": {"$ref": "common.schema.json#/$defs/id"},
+              "sequence": {"$ref": "common.schema.json#/$defs/safeInteger"}
+            }
+          },
+          "minItems": 1
+        },
+        "sentAt": {"$ref": "common.schema.json#/$defs/timestamp"}
+      }
+    },
+    "ping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "nonce", "sentAt"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "PING"},
+        "nonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "replyToNonce": {"$ref": "common.schema.json#/$defs/base64url"},
+        "sentAt": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "presence": {"$ref": "presence-record.schema.json"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "frameId", "frameType", "error"],
+      "properties": {
+        "protocolVersion": {"$ref": "common.schema.json#/$defs/protocolVersion"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"},
+        "frameType": {"const": "ERROR"},
+        "error": {"$ref": "error.schema.json"}
+      }
+    }
+  }
+}

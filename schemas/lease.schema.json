@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/lease.schema.json",
+  "title": "MissionWeave 0.1 Fenced Lease",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "leaseId",
+    "leaseType",
+    "missionId",
+    "groupId",
+    "holderAgentId",
+    "sessionEpoch",
+    "issuedAt",
+    "startsAt",
+    "expiresAt",
+    "state",
+    "renewalCount"
+  ],
+  "properties": {
+    "leaseId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "leaseType": {
+      "enum": ["coordinator", "ownership", "execution", "blocked"]
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "holderAgentId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "sessionEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "coordinatorEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "ownershipEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "startBy": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "issuedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "startsAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "expiresAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "graceExpiresAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "state": {
+      "enum": ["active", "expired", "revoked", "released"]
+    },
+    "renewalCount": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "lastRenewedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "closedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "closureReason": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 512
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"leaseType": {"const": "coordinator"}},
+        "required": ["leaseType"]
+      },
+      "then": {
+        "required": ["coordinatorEpoch"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "leaseType": {"enum": ["ownership", "execution", "blocked"]}
+        },
+        "required": ["leaseType"]
+      },
+      "then": {
+        "required": ["workItemId", "ownershipEpoch"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"leaseType": {"const": "ownership"}},
+        "required": ["leaseType"]
+      },
+      "then": {
+        "required": ["startBy"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"leaseType": {"const": "execution"}},
+        "required": ["leaseType"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {"required": ["coordinatorEpoch"]},
+            {"required": ["startBy"]},
+            {"required": ["graceExpiresAt"]},
+            {"required": ["capabilityTokenId"]}
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"renewalCount": {"minimum": 1}},
+        "required": ["renewalCount"]
+      },
+      "then": {
+        "required": ["lastRenewedAt"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"renewalCount": {"const": 0}},
+        "required": ["renewalCount"]
+      },
+      "then": {
+        "not": {"required": ["lastRenewedAt"]}
+      }
+    },
+    {
+      "if": {
+        "properties": {"state": {"const": "active"}},
+        "required": ["state"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {"required": ["closedAt"]},
+            {"required": ["closureReason"]}
+          ]
+        }
+      },
+      "else": {
+        "required": ["closedAt", "closureReason"]
+      }
+    }
+  ]
+}

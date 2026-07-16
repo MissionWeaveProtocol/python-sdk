@@ -1,0 +1,13 @@
+{
+  "membershipId": "urn:missionweave:membership:developer-one-mission-one",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "member": {"type": "agent", "id": "urn:missionweave:agent:developer-one"},
+  "role": "worker",
+  "state": "provisional",
+  "membershipEpoch": 1,
+  "scopes": ["message.post"],
+  "visibilityStartSequence": 35,
+  "provisionalExpiresAt": "2026-07-15T01:00:00Z",
+  "grantedAt": "2026-07-15T00:00:00Z"
+}

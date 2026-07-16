@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/presence-record.schema.json",
+  "title": "MissionWeave 0.1 Presence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agentId",
+    "sessionEpoch",
+    "status",
+    "capacity",
+    "capabilityAvailability",
+    "lastHeartbeat",
+    "expiresAt"
+  ],
+  "properties": {
+    "agentId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "sessionEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "status": {
+      "enum": ["online", "busy", "away", "draining", "offline"]
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxSlots", "activeSlots", "availableSlots", "queuedItems"],
+      "properties": {
+        "maxSlots": {
+          "$ref": "common.schema.json#/$defs/positiveInteger"
+        },
+        "activeSlots": {
+          "$ref": "common.schema.json#/$defs/safeInteger"
+        },
+        "availableSlots": {
+          "$ref": "common.schema.json#/$defs/safeInteger"
+        },
+        "queuedItems": {
+          "$ref": "common.schema.json#/$defs/safeInteger"
+        }
+      }
+    },
+    "capabilityAvailability": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "status"],
+        "properties": {
+          "capability": {
+            "$ref": "common.schema.json#/$defs/capabilityRef"
+          },
+          "status": {
+            "enum": ["available", "degraded", "unavailable"]
+          }
+        }
+      }
+    },
+    "estimatedResponseMs": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "lastHeartbeat": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "expiresAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}

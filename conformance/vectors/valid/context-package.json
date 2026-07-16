@@ -1,0 +1,34 @@
+{
+  "contextPackageId": "urn:missionweave:context-package:developer-one-v1",
+  "version": 1,
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "workItemId": "urn:missionweave:work-item:implementation",
+  "sourceEventRange": {
+    "fromSequence": 1,
+    "toSequence": 35,
+    "eventIds": [
+      "urn:missionweave:event:mission-created",
+      "urn:missionweave:event:requirements-accepted",
+      "urn:missionweave:event:implementation-offered"
+    ]
+  },
+  "artifactHashes": ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+  "summary": "Implement pagination using the accepted requirements artifact.",
+  "decisions": [
+    {
+      "description": "Use cursor-based rather than offset pagination.",
+      "sourceEventIds": ["urn:missionweave:event:requirements-accepted"]
+    }
+  ],
+  "constraints": ["Do not change the public error schema."],
+  "unresolvedQuestions": ["Confirm the maximum page size."],
+  "generatedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "generatedAt": "2026-07-15T00:10:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:coordinator",
+    "createdAt": "2026-07-15T00:10:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

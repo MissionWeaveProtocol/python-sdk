@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/group.schema.json",
+  "title": "MissionWeave 0.1 Mission Group",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "groupId",
+    "missionId",
+    "state",
+    "mainConversationId",
+    "createdAt"
+  ],
+  "properties": {
+    "groupId": { "$ref": "common.schema.json#/$defs/id" },
+    "missionId": { "$ref": "common.schema.json#/$defs/id" },
+    "state": { "enum": ["active", "archived"] },
+    "mainConversationId": { "$ref": "common.schema.json#/$defs/id" },
+    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "archivedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "archiveSnapshotId": { "$ref": "common.schema.json#/$defs/id" },
+    "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "state": { "const": "archived" } },
+        "required": ["state"]
+      },
+      "then": { "required": ["archivedAt", "archiveSnapshotId"] }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "active" } },
+        "required": ["state"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["archivedAt"] },
+            { "required": ["archiveSnapshotId"] }
+          ]
+        }
+      }
+    }
+  ]
+}

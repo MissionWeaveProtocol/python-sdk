@@ -1,0 +1,91 @@
+{
+  "workItemId": "urn:missionweave:work-item:implementation",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "conversationId": "urn:missionweave:conversation:implementation",
+  "revision": 3,
+  "state": "queued",
+  "exclusive": true,
+  "contract": {
+    "contractVersion": 2,
+    "goal": "Implement cursor-based pagination for the list endpoint.",
+    "requiredDeliverables": [
+      {
+        "deliverableId": "source-change",
+        "description": "Reviewed source and test changes.",
+        "mediaType": "application/vnd.git.patch",
+        "schema": "urn:missionweave:schema:opaque"
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "criterionId": "integration-tests",
+        "description": "Pagination integration tests pass.",
+        "evidenceRequired": ["deterministic_test"]
+      }
+    ],
+    "inputArtifacts": [],
+    "dependencyWorkItemIds": ["urn:missionweave:work-item:requirements"],
+    "allowedResources": [
+      {"resource": "urn:missionweave:resource:repository", "operations": ["read", "write:branch"]}
+    ],
+    "requiredCapabilities": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "deadline": "2026-07-18T00:00:00Z",
+    "requestedUrgency": "high",
+    "businessImpact": "Unblocks the customer-facing API release.",
+    "retryPolicy": {
+      "maxAttempts": 3,
+      "backoff": "exponential",
+      "maxDelay": "PT5M",
+      "retryableFailures": ["TRANSIENT_TOOL_FAILURE"]
+    },
+    "budget": {"modelTokenLimit": 30000, "toolCallLimit": 100},
+    "sideEffectRisk": "reversible",
+    "executionApproval": "policy_required"
+  },
+  "offers": [
+    {
+      "offerId": "urn:missionweave:offer:implementation-developer-one",
+      "agentId": "urn:missionweave:agent:developer-one",
+      "agentCardVersion": 3,
+      "expiresAt": "2026-07-15T01:00:00Z",
+      "status": "accepted"
+    }
+  ],
+  "owner": {
+    "agentId": "urn:missionweave:agent:developer-one",
+    "agentCardVersion": 3,
+    "capabilityPins": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "ownershipEpoch": 2,
+    "ownershipLeaseId": "urn:missionweave:lease:ownership-two",
+    "acceptedAt": "2026-07-15T00:15:00Z"
+  },
+  "selectionBasis": {
+    "requiredCapabilities": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "verifiedMatches": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "authorizationEligible": true,
+    "availabilityEstimate": "2026-07-15T00:30:00Z",
+    "expectedCost": 18.5,
+    "reliabilityEvidence": ["urn:missionweave:performance:developer-one-python"],
+    "policyRulesApplied": ["eligible-capability-v2", "within-mission-budget"]
+  },
+  "scheduleEstimate": {
+    "estimatedStart": "2026-07-15T00:30:00Z",
+    "estimatedCompletion": "2026-07-15T03:30:00Z",
+    "confidence": 0.8,
+    "capacityStatus": "queued",
+    "lastCalculatedAt": "2026-07-15T00:15:00Z"
+  },
+  "createdBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "authorizedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "createdAt": "2026-07-15T00:10:00Z",
+  "updatedAt": "2026-07-15T00:15:00Z"
+}

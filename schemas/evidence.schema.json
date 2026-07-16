@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/evidence.schema.json",
+  "title": "MissionWeave 0.1 Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidenceId",
+    "missionId",
+    "groupId",
+    "workItemId",
+    "type",
+    "subject",
+    "criterionIds",
+    "method",
+    "result",
+    "artifactHashes",
+    "generatedBy",
+    "createdAt",
+    "signature"
+  ],
+  "properties": {
+    "evidenceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "type": {
+      "enum": [
+        "artifact_integrity",
+        "schema_validation",
+        "deterministic_test",
+        "business_rule",
+        "reviewer_assessment",
+        "human_review",
+        "policy_check",
+        "failure_report"
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": ["work_item", "artifact", "mission"]
+        },
+        "id": {
+          "anyOf": [
+            {"$ref": "common.schema.json#/$defs/id"},
+            {"$ref": "common.schema.json#/$defs/sha256"}
+          ]
+        }
+      }
+    },
+    "criterionIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "method": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "result": {
+      "enum": ["passed", "failed", "inconclusive"]
+    },
+    "details": {
+      "type": "object"
+    },
+    "artifactHashes": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sha256"
+      },
+      "uniqueItems": true
+    },
+    "generatedBy": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "toolVersion": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "modelVersion": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

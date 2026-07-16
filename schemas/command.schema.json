@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/command.schema.json",
+  "title": "MissionWeave 0.1 Command Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "actionId",
+    "actor",
+    "sessionEpoch",
+    "membershipEpoch",
+    "groupId",
+    "kind",
+    "correlationId",
+    "issuedAt",
+    "payload",
+    "signature"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "$ref": "common.schema.json#/$defs/protocolVersion"
+    },
+    "actionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "actor": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "sessionEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "membershipEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "conversationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "cooperationOverrideGrantId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "mission.create",
+            "mission.assign_coordinator",
+            "mission.renew_coordinator",
+            "mission.submit_for_approval",
+            "mission.approve",
+            "mission.request_changes",
+            "mission.cancel",
+            "mission.terminate",
+            "mission.create_child",
+            "mission.create_follow_up",
+            "membership.change",
+            "membership.end",
+            "membership.grant_delegation",
+            "message.post",
+            "message.correct",
+            "message.retract",
+            "message.redact",
+            "work.propose",
+            "work.authorize",
+            "work.offer",
+            "work.accept_offer",
+            "work.start",
+            "work.checkpoint",
+            "work.block",
+            "work.unblock",
+            "work.submit",
+            "work.accept_result",
+            "work.fail",
+            "work.cancel",
+            "artifact.publish",
+            "approval.grant_execution",
+            "policy.grant_cooperation_override"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^ext\\.[a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*){2,}$",
+          "maxLength": 160
+        }
+      ]
+    },
+    "expectedRevision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "correlationId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "causedByEventId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "issuedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/extensions"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  }
+}

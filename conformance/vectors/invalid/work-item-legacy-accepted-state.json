@@ -1,0 +1,82 @@
+{
+  "workItemId": "urn:missionweave:work-item:legacy-accepted",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "conversationId": "urn:missionweave:conversation:legacy-accepted",
+  "revision": 3,
+  "state": "accepted",
+  "exclusive": true,
+  "contract": {
+    "contractVersion": 2,
+    "goal": "Reject a legacy WorkItem state alias.",
+    "requiredDeliverables": [
+      {
+        "deliverableId": "state-change",
+        "description": "Use the authoritative verified state.",
+        "mediaType": "application/vnd.git.patch",
+        "schema": "urn:missionweave:schema:opaque"
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "criterionId": "schema-valid",
+        "description": "The normative schema accepts the authoritative state only.",
+        "evidenceRequired": ["deterministic_test"]
+      }
+    ],
+    "inputArtifacts": [],
+    "dependencyWorkItemIds": [],
+    "allowedResources": [
+      {"resource": "urn:missionweave:resource:repository", "operations": ["read"]}
+    ],
+    "requiredCapabilities": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "deadline": "2026-07-18T00:00:00Z",
+    "requestedUrgency": "normal",
+    "businessImpact": "Keeps the protocol vocabulary aligned.",
+    "retryPolicy": {
+      "maxAttempts": 1,
+      "backoff": "none",
+      "maxDelay": "PT0S",
+      "retryableFailures": []
+    },
+    "budget": {"modelTokenLimit": 10000},
+    "sideEffectRisk": "none",
+    "executionApproval": "not_required"
+  },
+  "owner": {
+    "agentId": "urn:missionweave:agent:developer-one",
+    "agentCardVersion": 3,
+    "capabilityPins": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "ownershipEpoch": 2,
+    "ownershipLeaseId": "urn:missionweave:lease:ownership-two",
+    "acceptedAt": "2026-07-15T00:15:00Z"
+  },
+  "selectionBasis": {
+    "requiredCapabilities": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "verifiedMatches": [
+      {"id": "acme.software.python-implementation", "version": "2.1.0"}
+    ],
+    "authorizationEligible": true,
+    "availabilityEstimate": "2026-07-15T00:30:00Z",
+    "expectedCost": 18.5,
+    "reliabilityEvidence": ["urn:missionweave:performance:developer-one-python"],
+    "policyRulesApplied": ["eligible-capability-v2", "within-mission-budget"]
+  },
+  "submission": {
+    "artifactHashes": [
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "evidenceIds": ["urn:missionweave:evidence:legacy-state-check"],
+    "submittedAt": "2026-07-15T03:30:00Z"
+  },
+  "createdBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "authorizedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "createdAt": "2026-07-15T00:10:00Z",
+  "updatedAt": "2026-07-15T03:30:00Z"
+}

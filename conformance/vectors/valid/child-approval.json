@@ -1,0 +1,20 @@
+{
+  "approvalId": "urn:missionweave:approval:child-security-review",
+  "kind": "child_mission",
+  "decision": "approved",
+  "missionId": "urn:missionweave:mission:child-security-review",
+  "groupId": "urn:missionweave:group:child-security-review",
+  "missionRevision": 4,
+  "artifactHashes": ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  "acceptancePolicyVersion": "1.2.0",
+  "approver": {"type": "agent", "id": "urn:missionweave:agent:parent-coordinator"},
+  "comments": "Child result accepted as evidence for the parent WorkItem.",
+  "conditions": [],
+  "occurredAt": "2026-07-15T04:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweave:key:parent-coordinator",
+    "createdAt": "2026-07-15T04:00:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

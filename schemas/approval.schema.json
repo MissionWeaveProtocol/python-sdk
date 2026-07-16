@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/approval.schema.json",
+  "title": "MissionWeave 0.1 Approval Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approvalId",
+    "kind",
+    "decision",
+    "missionId",
+    "groupId",
+    "missionRevision",
+    "artifactHashes",
+    "acceptancePolicyVersion",
+    "approver",
+    "comments",
+    "conditions",
+    "occurredAt",
+    "signature"
+  ],
+  "properties": {
+    "approvalId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "enum": ["mission_final", "child_mission", "work_execution"]
+    },
+    "decision": {
+      "enum": ["approved", "changes_requested", "denied", "revoked"]
+    },
+    "missionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workItemId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "missionRevision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "artifactHashes": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sha256"
+      },
+      "uniqueItems": true
+    },
+    "acceptancePolicyVersion": {
+      "$ref": "common.schema.json#/$defs/semver"
+    },
+    "approver": {
+      "$ref": "common.schema.json#/$defs/actor"
+    },
+    "comments": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      }
+    },
+    "revokesApprovalId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "occurredAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "signature": {
+      "$ref": "common.schema.json#/$defs/signature"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {"enum": ["mission_final", "child_mission"]},
+          "decision": {"const": "approved"}
+        },
+        "required": ["kind", "decision"]
+      },
+      "then": {
+        "properties": {
+          "artifactHashes": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "mission_final"}},
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "approver": {
+            "$ref": "common.schema.json#/$defs/humanActor"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "work_execution"}},
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["workItemId"]
+      }
+    },
+    {
+      "if": {
+        "properties": {"decision": {"const": "revoked"}},
+        "required": ["decision"]
+      },
+      "then": {
+        "required": ["revokesApprovalId"]
+      }
+    }
+  ]
+}

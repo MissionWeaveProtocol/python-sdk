@@ -1,0 +1,45 @@
+{
+  "contractVersion": 2,
+  "goal": "Implement cursor-based pagination for the list endpoint.",
+  "requiredDeliverables": [
+    {
+      "deliverableId": "source-change",
+      "description": "Reviewed source and test changes.",
+      "mediaType": "application/vnd.git.patch",
+      "schema": "urn:missionweave:schema:opaque"
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "criterionId": "integration-tests",
+      "description": "Pagination integration tests pass.",
+      "evidenceRequired": ["deterministic_test", "artifact_integrity"]
+    }
+  ],
+  "inputArtifacts": ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  "dependencyWorkItemIds": ["urn:missionweave:work-item:requirements"],
+  "allowedResources": [
+    {"resource": "urn:missionweave:resource:repository", "operations": ["read", "write:branch"]}
+  ],
+  "requiredCapabilities": [
+    {"id": "acme.software.python-implementation", "version": "2.1.0"}
+  ],
+  "deadline": "2026-07-18T00:00:00Z",
+  "requestedUrgency": "high",
+  "businessImpact": "Unblocks the customer-facing API release.",
+  "retryPolicy": {
+    "maxAttempts": 3,
+    "backoff": "exponential",
+    "maxDelay": "PT5M",
+    "retryableFailures": ["TRANSIENT_TOOL_FAILURE"]
+  },
+  "budget": {
+    "currency": "USD",
+    "financialLimit": 25,
+    "modelTokenLimit": 30000,
+    "toolCallLimit": 100,
+    "wallClockSecondsLimit": 14400
+  },
+  "sideEffectRisk": "reversible",
+  "executionApproval": "policy_required"
+}

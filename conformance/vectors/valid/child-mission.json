@@ -1,0 +1,34 @@
+{
+  "missionId": "urn:missionweave:mission:child-security-review",
+  "groupId": "urn:missionweave:group:child-security-review",
+  "revision": 2,
+  "objective": "Complete the security review branch of the parent WorkItem.",
+  "definitionOfDone": [
+    {
+      "criterionId": "review-complete",
+      "description": "Security findings and disposition are attached.",
+      "evidenceRequired": ["reviewer_assessment"]
+    }
+  ],
+  "missionOwner": {"type": "agent", "id": "urn:missionweave:agent:parent-coordinator"},
+  "coordinator": {
+    "agentId": "urn:missionweave:agent:child-coordinator",
+    "agentCardVersion": 1,
+    "coordinatorEpoch": 1,
+    "leaseId": "urn:missionweave:lease:child-coordinator-one"
+  },
+  "state": "active",
+  "budget": {"modelTokenLimit": 10000, "wallClockSecondsLimit": 7200},
+  "deadline": "2026-07-18T00:00:00Z",
+  "approvalPolicy": {
+    "finalHumanApproval": false,
+    "highRiskExecutionApproval": true,
+    "policyVersion": "1.2.0"
+  },
+  "parent": {
+    "missionId": "urn:missionweave:mission:one",
+    "workItemId": "urn:missionweave:work-item:security-review",
+    "depth": 1
+  },
+  "createdAt": "2026-07-15T00:30:00Z"
+}

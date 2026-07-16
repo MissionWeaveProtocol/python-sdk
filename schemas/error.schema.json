@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweave.dev/schemas/0.1/error.schema.json",
+  "title": "MissionWeave 0.1 Protocol Error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message", "retryable", "occurredAt"],
+  "properties": {
+    "code": {
+      "enum": [
+        "UNSUPPORTED_VERSION",
+        "AUTH_REQUIRED",
+        "AUTH_INVALID_SIGNATURE",
+        "AUTH_STALE_SESSION",
+        "AUTH_FORBIDDEN",
+        "GROUP_NOT_FOUND",
+        "MEMBERSHIP_REQUIRED",
+        "MEMBERSHIP_STALE",
+        "SCHEMA_VALIDATION_FAILED",
+        "INVALID_COMMAND",
+        "INVALID_STATE_TRANSITION",
+        "REVISION_CONFLICT",
+        "ACTION_ID_COLLISION",
+        "UNKNOWN_CRITICAL_EXTENSION",
+        "WORK_CONTRACT_INCOMPLETE",
+        "WORK_OFFER_EXPIRED",
+        "WORK_ALREADY_OWNED",
+        "WORK_LEASE_EXPIRED",
+        "WORK_STALE_OWNERSHIP",
+        "APPROVAL_REQUIRED",
+        "BUDGET_EXCEEDED",
+        "RATE_LIMITED",
+        "BACKPRESSURE",
+        "CURSOR_TOO_OLD",
+        "PROTOCOL_VIOLATION",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "fatal": {
+      "type": "boolean"
+    },
+    "relatedFrameId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "relatedActionId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "groupId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "expectedRevision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "currentRevision": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "retryAfterMs": {
+      "$ref": "common.schema.json#/$defs/safeInteger"
+    },
+    "snapshotArtifactHash": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "details": {
+      "type": "object"
+    },
+    "occurredAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}

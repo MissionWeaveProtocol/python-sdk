@@ -1,0 +1,18 @@
+{
+  "leaseId": "urn:missionweave:lease:execution-two",
+  "leaseType": "execution",
+  "missionId": "urn:missionweave:mission:one",
+  "groupId": "urn:missionweave:group:mission-one",
+  "workItemId": "urn:missionweave:work-item:implementation",
+  "holderAgentId": "urn:missionweave:agent:developer-one",
+  "sessionEpoch": 7,
+  "ownershipEpoch": 2,
+  "issuedAt": "2026-07-15T00:30:00Z",
+  "startsAt": "2026-07-15T00:30:00Z",
+  "expiresAt": "2026-07-15T00:50:00Z",
+  "state": "released",
+  "renewalCount": 1,
+  "lastRenewedAt": "2026-07-15T00:40:00Z",
+  "closedAt": "2026-07-15T00:45:00Z",
+  "closureReason": "work checkpointed"
+}
