@@ -38,17 +38,17 @@ MissionWeaveProtocol Python SDK 是
 - 每个 Mission 对应一个临时 Group 和单调递增的 Event 历史；
 - 由人类担任根 MissionOwner，并支持可替换且受 epoch fencing 保护的 Coordinator Agent；
 - 由 Organization 签名的 Agent Card，与短暂存在的 Presence Record 分离；
-- 对等 Conversation，以及显式的 Work Proposal、授权、发出任务、接受任务、所有权、
+- 对等 Conversation，以及显式的 Work Proposal、工作项授权、Work Offer、接受 Work Offer、所有权、
   execution lease、checkpoint、Evidence、审查和 Approval 状态转换；
 - 有时限且限定目标范围的 Delegation Grant，并受 capability、budget、depth、
   Membership 和 Coordinator epoch 约束；
-- 递归的子 Mission 和相互关联的后续 Mission；
+- 递归的子任务（Child Mission）和相互关联的后续 Mission；
 - 每个 Group 独立的 Worker 队列、加权公平的全局 Scheduler，以及隔离的容量槽位；
 - 至少一次 Delivery、稳定的 Action ID、去重、Cursor、重放和本地恢复；
 - 已签名的 Context Package、带分类的可复用知识发布，以及已签名的 Group 归档；
 - 短期 Membership 和 capability token，并受 session、Membership、ownership、lease、
   scope、Approval 和 budget 约束；
-- 权威的六维 Mission/WorkItem 额度分配和累计使用量核算；
+- 权威的六维 Mission/工作项额度分配和累计使用量核算；
 - 规范化 RFC 8785 JSON，以及对符合 schema 的 WebSocket/TLS frame 进行 Ed25519 签名；
 - PostgreSQL 权威状态、SQLite Agent 本地投影，以及按内容寻址的 Artifact。
 
@@ -81,8 +81,9 @@ uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 
 该命令输出一份规范化 JSON 报告；如果缺少任何必需行为，则以非零状态退出。报告包含
 50 项命名检查。这个确定性场景会运行两个并发的软件开发 Mission，共用一名 reviewer，
-包含由 Worker 正式提出的子任务、一个子安全 Mission、Worker 之间的澄清交流、两个隔离
-的执行槽位、仅在 checkpoint 处发生的抢占、任务阻塞与恢复、Coordinator 审查、一次人类
+包含由 Worker 通过正式 Work Proposal 提出的后代工作项、一个安全子任务、Worker 之间的
+澄清交流、两个隔离的执行槽位、仅在 checkpoint 处发生的抢占、工作项阻塞与恢复、
+Coordinator 审查、一次人类
 变更请求，以及准确签名的最终 Approval。
 
 它还会注入重复 Delivery、Action ID 冲突、Worker 重启后的 Event 队列重建、前任

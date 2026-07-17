@@ -44,7 +44,7 @@ Les versions du protocole et de Python sont gérées indépendamment.
   de revue et d’Approval ;
 - des Delegation Grant expirables et limitées à une cible, délimitées par la capacité, le budget, la
   profondeur, la Membership et les Coordinator Epoch ;
-- des Child Mission récursives et des Follow-up Mission liées ;
+- des Mission enfant récursives (Child Mission) et des Follow-up Mission liées ;
 - des files de Worker par Group, un Scheduler global à équité pondérée et des Capacity Slot isolés ;
 - une livraison au moins une fois, des Action ID stables, la déduplication, les Cursor, le Replay et
   la récupération locale ;
@@ -89,10 +89,11 @@ uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 
 La commande produit un rapport JSON canonique et renvoie un statut non nul si un comportement
 requis manque. Son rapport contient 50 vérifications nommées. Le scénario déterministe exécute deux
-Mission de développement logiciel concurrentes avec un reviewer partagé, un sous-travail formel
-proposé par un Worker, une Child Mission de sécurité, une clarification entre Worker, deux Capacity
-Slot isolés, une préemption uniquement aux Checkpoint, du travail bloqué puis repris, la revue du
-Coordinator, une demande humaine de modification et des Approval finales exactes et signées.
+Mission de développement logiciel concurrentes avec un reviewer partagé, un WorkItem descendant
+proposé formellement par un Worker au moyen d’une Work Proposal, une Mission enfant de sécurité, une
+clarification entre Worker, deux Capacity Slot isolés, une préemption uniquement aux Checkpoint, un
+WorkItem bloqué puis repris, la revue du Coordinator, une demande humaine de modification et des
+Approval finales exactes et signées.
 
 Il injecte également une Delivery dupliquée, une collision d’Action ID, la reconstruction d’une file
 à partir des Event après le redémarrage d’un Worker, l’invalidation de l’ancien Coordinator, des

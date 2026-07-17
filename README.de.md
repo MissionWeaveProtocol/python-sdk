@@ -49,7 +49,7 @@ Protokoll- und Python-Releases werden unabhängig voneinander versioniert.
   Evidence, Prüfung und Approval;
 - ablaufende, auf ein Ziel begrenzte Delegation Grant, geschützt durch Capability,
   Budget, Tiefe, Membership und Coordinator Epoch;
-- rekursive Child Mission und verknüpfte Follow-up Mission;
+- rekursive untergeordnete Missionen (Child Mission) und verknüpfte Follow-up Mission;
 - Group-spezifische Warteschlangen des Worker mit einem gewichteten, fairen
   globalen Scheduler und isolierten Capacity Slot;
 - mindestens einmalige Delivery, stabile Action ID, Deduplizierung, Cursor,
@@ -97,11 +97,12 @@ Der Command gibt einen kanonischen JSON-Bericht aus und beendet sich mit einem
 Status ungleich null, wenn ein erforderliches Verhalten fehlt. Sein Bericht
 enthält 50 benannte Prüfungen. Das deterministische Szenario führt zwei
 gleichzeitige Softwareentwicklungs-Mission mit einem gemeinsamen Reviewer,
-formal von einem Worker vorgeschlagener Unterarbeit, einer Child Mission für
-Sicherheit, Klärung zwischen Worker, zwei isolierten Capacity Slot,
-ausschließlich Checkpoint-basierter Preemption, blockierter und fortgesetzter
-Arbeit, Prüfung durch den Coordinator, einer menschlichen Änderungsanforderung
-und genauen signierten finalen Approval aus.
+einem von einem Worker formal per Work Proposal vorgeschlagenen untergeordneten
+WorkItem, einer untergeordneten Mission für Sicherheit, Klärung zwischen Worker,
+zwei isolierten Capacity Slot, ausschließlich Checkpoint-basierter Preemption,
+einem blockierten und fortgesetzten WorkItem, Prüfung durch den Coordinator,
+einer menschlichen Änderungsanforderung und genauen signierten finalen Approval
+aus.
 
 Es injiziert außerdem doppelte Delivery, eine Action-ID-Kollision,
 Event-basierte Rekonstruktion der Warteschlange nach dem Neustart eines Worker,
