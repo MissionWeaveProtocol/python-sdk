@@ -22,8 +22,8 @@ dependencies = [
 ]
 
 [project.urls]
-Protocol = "https://github.com/MissionWeaveProject/missionweaveprotocol"
-Repository = "https://github.com/MissionWeaveProject/python-sdk"
+Protocol = "https://github.com/missionweaveprotocol/missionweaveprotocol"
+Repository = "https://github.com/missionweaveprotocol/python-sdk"
 
 [project.optional-dependencies]
 dev = [

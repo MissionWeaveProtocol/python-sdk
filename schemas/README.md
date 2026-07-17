@@ -1,7 +1,7 @@
 # Vendored MissionWeave 0.1 JSON Schemas
 
 These 21 JSON Schema Draft 2020-12 files are a vendored snapshot from the
-[MissionWeave Protocol repository](https://github.com/MissionWeaveProject/missionweaveprotocol).
+[MissionWeave Protocol repository](https://github.com/missionweaveprotocol/missionweaveprotocol).
 They are included so the Python implementation can validate protocol documents offline and ship
 the same schemas inside its wheel.
 

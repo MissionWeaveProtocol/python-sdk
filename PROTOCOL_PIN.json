@@ -1,5 +1,5 @@
 {
-  "repository": "https://github.com/MissionWeaveProject/missionweaveprotocol",
+  "repository": "https://github.com/missionweaveprotocol/missionweaveprotocol",
   "commit": "85164d6dc880f079e14ff9e951244f2a7fccfa85",
   "protocolVersion": "0.1",
   "wireNamespace": "missionweave",
