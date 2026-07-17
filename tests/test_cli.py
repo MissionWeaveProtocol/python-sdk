@@ -10,10 +10,10 @@ import pytest
 from fastapi import FastAPI
 from typer.testing import CliRunner
 
-import missionweave.cli as cli
-from missionweave.auth import AgentIdentity
-from missionweave.canonical import canonical_bytes
-from missionweave.models import AgentCard, Capability
+import missionweaveprotocol.cli as cli
+from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.canonical import canonical_bytes
+from missionweaveprotocol.models import AgentCard, Capability
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUT_HASH = f"sha256:{'a' * 64}"
@@ -21,12 +21,12 @@ OUTPUT_HASH = f"sha256:{'b' * 64}"
 
 
 def _registry(tmp_path: Path) -> Path:
-    identity = AgentIdentity.generate("urn:missionweave:agent:cli")
+    identity = AgentIdentity.generate("urn:missionweaveprotocol:agent:cli")
     card = AgentCard(
         agent_id=identity.agent_id,
         version=1,
         display_name="CLI Agent",
-        owner="MissionWeave tests",
+        owner="MissionWeaveProtocol tests",
         public_key=identity.public_key,
         capabilities=(
             Capability(
@@ -38,7 +38,7 @@ def _registry(tmp_path: Path) -> Path:
                     "inputSchemaHash": INPUT_HASH,
                     "outputSchemaHash": OUTPUT_HASH,
                 },
-                verified_evidence=("urn:missionweave:evidence:cli-test",),
+                verified_evidence=("urn:missionweaveprotocol:evidence:cli-test",),
             ),
         ),
         issued_at=datetime.now(UTC),
@@ -155,14 +155,14 @@ def test_server_requires_tls_unless_local_insecure_mode_is_explicit(tmp_path: Pa
     )
 
     assert result.exit_code != 0
-    assert "MissionWeave requires TLS" in result.output
+    assert "MissionWeaveProtocol requires TLS" in result.output
 
 
 def test_registry_trust_root_rejects_unsigned_or_tampered_agent_cards(tmp_path: Path) -> None:
     path = _registry(tmp_path)
     document = json.loads(path.read_text(encoding="utf-8"))
     card = AgentCard.model_validate(document["agentCards"][0])
-    organization = AgentIdentity.generate("urn:missionweave:organization:test")
+    organization = AgentIdentity.generate("urn:missionweaveprotocol:organization:test")
     signed = card.model_copy(
         update={
             "signature": organization.sign(
@@ -201,7 +201,7 @@ def test_registry_trust_root_rejects_unsigned_or_tampered_agent_cards(tmp_path: 
                 input_schema="https://schemas.example.test/input.json",
                 output_schema="https://schemas.example.test/output.json",
                 constraints={"outputSchemaHash": OUTPUT_HASH},
-                verified_evidence=("urn:missionweave:evidence:cli-test",),
+                verified_evidence=("urn:missionweaveprotocol:evidence:cli-test",),
             ),
             "inputSchemaHash",
         ),
@@ -212,7 +212,7 @@ def test_registry_trust_root_rejects_unsigned_or_tampered_agent_cards(tmp_path: 
                 input_schema="https://schemas.example.test/input.json",
                 output_schema="https://schemas.example.test/output.json",
                 constraints={"inputSchemaHash": INPUT_HASH},
-                verified_evidence=("urn:missionweave:evidence:cli-test",),
+                verified_evidence=("urn:missionweaveprotocol:evidence:cli-test",),
             ),
             "outputSchemaHash",
         ),
@@ -239,7 +239,7 @@ def test_production_registry_requires_complete_capability_provenance(
     path = _registry(tmp_path)
     document = json.loads(path.read_text(encoding="utf-8"))
     card = AgentCard.model_validate(document["agentCards"][0])
-    organization = AgentIdentity.generate("urn:missionweave:organization:test")
+    organization = AgentIdentity.generate("urn:missionweaveprotocol:organization:test")
     unsigned = card.model_copy(update={"capabilities": (capability,), "signature": "pending"})
     signed = unsigned.model_copy(
         update={

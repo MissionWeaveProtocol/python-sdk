@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from missionweave.artifacts import ArtifactError, LocalArtifactStore
-from missionweave.auth import AgentIdentity
+from missionweaveprotocol.artifacts import ArtifactError, LocalArtifactStore
+from missionweaveprotocol.auth import AgentIdentity
 
 
 def test_artifact_is_content_addressed_signed_and_provenance_linked(tmp_path) -> None:

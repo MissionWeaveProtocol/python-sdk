@@ -1,7 +1,12 @@
-# Vendored conformance vectors
+# Conformance vectors
 
-This directory is a vendored snapshot of the implementation-neutral conformance manifest and
-vectors from the
-[MissionWeave Protocol repository](https://github.com/missionweaveprotocol/missionweaveprotocol).
+`manifest.json` maps every test case to one schema, one instance document, and its expected
+validity. The vectors are implementation-neutral protocol artifacts.
 
-The canonical vectors live in the protocol repository. Do not edit this directory independently.
+The protocol repository owns the canonical vectors. Implementations should pin a protocol release
+or commit, run the complete manifest, and record the pinned source and content digest in their own
+repository.
+
+Passing these vectors demonstrates structural schema conformance only. Behavioral conformance also
+requires the state-machine, ordering, authorization, signature, lease, budget, and replay rules in
+[`spec/PROTOCOL.md`](../spec/PROTOCOL.md).

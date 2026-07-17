@@ -33,13 +33,27 @@ EXPECTED_SCHEMAS = {
 }
 
 
+def test_distribution_and_import_identity_are_exclusively_missionweaveprotocol() -> None:
+    configuration = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    project = configuration["project"]
+
+    assert project["name"] == "missionweaveprotocol"
+    assert project["scripts"] == {
+        "missionweaveprotocol-conformance": "missionweaveprotocol.cli:conformance",
+        "missionweaveprotocol-demo": "missionweaveprotocol.cli:demo",
+        "missionweaveprotocol-server": "missionweaveprotocol.cli:server",
+    }
+    retired_import = "".join(("mission", "weave"))
+    assert not (ROOT / "src" / retired_import).exists()
+
+
 def test_package_configuration_includes_typed_marker_and_complete_schema_directory() -> None:
     configuration = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     force_include = configuration["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
 
-    assert force_include["src/missionweave/py.typed"] == "missionweave/py.typed"
-    assert force_include["schemas"] == "missionweave/schemas"
-    assert (ROOT / "src" / "missionweave" / "py.typed").is_file()
+    assert force_include["src/missionweaveprotocol/py.typed"] == "missionweaveprotocol/py.typed"
+    assert force_include["schemas"] == "missionweaveprotocol/schemas"
+    assert (ROOT / "src" / "missionweaveprotocol" / "py.typed").is_file()
 
 
 def test_all_21_packaged_normative_schemas_are_present_and_valid() -> None:

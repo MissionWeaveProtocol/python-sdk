@@ -8,12 +8,12 @@ from pathlib import Path
 import asyncpg  # type: ignore[import-untyped]
 import pytest
 
-from missionweave.auth import AgentIdentity
-from missionweave.canonical import canonical_hash
-from missionweave.core import ActionIdCollision, BudgetExceeded, Core
-from missionweave.crypto import load_private_key, sign_canonical, verify_canonical
-from missionweave.local_store import SQLiteAgentStore
-from missionweave.models import (
+from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.canonical import canonical_hash
+from missionweaveprotocol.core import ActionIdCollision, BudgetExceeded, Core
+from missionweaveprotocol.crypto import load_private_key, sign_canonical, verify_canonical
+from missionweaveprotocol.local_store import SQLiteAgentStore
+from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
     AddMembershipPayload,
     AgentCard,
@@ -39,12 +39,17 @@ from missionweave.models import (
     WorkContract,
     WorkItem,
 )
-from missionweave.offline import (
+from missionweaveprotocol.offline import (
     OfflineExecutionPolicy,
     OfflineLimits,
     rebase_offline_command,
 )
-from missionweave.store import AuthoritativeStore, InMemoryStore, PostgreSQLStore, SQLiteStore
+from missionweaveprotocol.store import (
+    AuthoritativeStore,
+    InMemoryStore,
+    PostgreSQLStore,
+    SQLiteStore,
+)
 from tests.test_core import MutableClock, Scenario
 
 GROUP_ID = "group:budget"
@@ -529,10 +534,10 @@ async def test_sqlite_restart_preserves_authoritative_usage(tmp_path: Path) -> N
 
 @pytest.mark.asyncio
 async def test_postgresql_restart_preserves_authoritative_usage_when_available() -> None:
-    url = os.getenv("MISSIONWEAVE_TEST_POSTGRES_URL")
+    url = os.getenv("MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL")
     if not url:
-        pytest.skip("set MISSIONWEAVE_TEST_POSTGRES_URL to run PostgreSQL integration")
+        pytest.skip("set MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL to run PostgreSQL integration")
     connection = await asyncpg.connect(url)
-    await connection.execute("DROP TABLE IF EXISTS missionweave_authoritative_state")
+    await connection.execute("DROP TABLE IF EXISTS missionweaveprotocol_authoritative_state")
     await connection.close()
     await _assert_sql_restart(PostgreSQLStore(url), PostgreSQLStore(url))

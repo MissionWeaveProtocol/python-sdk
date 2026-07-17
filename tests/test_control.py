@@ -6,10 +6,10 @@ from typing import Any, cast
 
 import pytest
 
-from missionweave.control import HumanControl, HumanIdentity
-from missionweave.core import Core
-from missionweave.crypto import generate_keypair, sign_canonical
-from missionweave.models import (
+from missionweaveprotocol.control import HumanControl, HumanIdentity
+from missionweaveprotocol.core import Core
+from missionweaveprotocol.crypto import generate_keypair, sign_canonical
+from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
     AddMembershipPayload,
     AgentCard,
@@ -38,7 +38,7 @@ from missionweave.models import (
     WorkContract,
     WorkItem,
 )
-from missionweave.store import InMemoryStore
+from missionweaveprotocol.store import InMemoryStore
 
 NOW = datetime(2026, 7, 15, 8, 0, tzinfo=UTC)
 

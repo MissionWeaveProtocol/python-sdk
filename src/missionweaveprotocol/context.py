@@ -32,7 +32,7 @@ def _uri(value: str, namespace: str) -> str:
     try:
         return f"urn:uuid:{UUID(value)}"
     except ValueError:
-        return f"urn:missionweave:{namespace}:{value}"
+        return f"urn:missionweaveprotocol:{namespace}:{value}"
 
 
 class SourceEventRange(ProtocolModel):

@@ -24,10 +24,10 @@ from pydantic import (
     model_validator,
 )
 
-from missionweave.canonical import canonical_bytes
-from missionweave.crypto import PublicKeyLike, verify_canonical
-from missionweave.lease import ExecutionLease, LeaseState
-from missionweave.models import (
+from missionweaveprotocol.canonical import canonical_bytes
+from missionweaveprotocol.crypto import PublicKeyLike, verify_canonical
+from missionweaveprotocol.lease import ExecutionLease, LeaseState
+from missionweaveprotocol.models import (
     ActorType,
     Command,
     CommandKind,

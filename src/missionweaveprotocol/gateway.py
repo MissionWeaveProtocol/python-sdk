@@ -1,4 +1,4 @@
-"""Authenticated multiplexed WebSocket Adapter for the MissionWeave core Interface."""
+"""Authenticated multiplexed WebSocket Adapter for the MissionWeaveProtocol core Interface."""
 
 from __future__ import annotations
 
@@ -19,17 +19,22 @@ from jsonschema import ValidationError as JSONSchemaValidationError
 from pydantic import JsonValue
 from pydantic import ValidationError as PydanticValidationError
 
-from missionweave.auth import (
+from missionweaveprotocol.auth import (
     AgentKeyRegistry,
     AuthenticationError,
     SessionAuthority,
     SessionGrant,
 )
-from missionweave.canonical import canonical_hash, canonical_json
-from missionweave.conformance import SchemaCatalog
-from missionweave.core import Core, InvalidCommand, MissionWeaveError
-from missionweave.crypto import PrivateKeyLike, generate_keypair, sign_canonical, verify_canonical
-from missionweave.models import (
+from missionweaveprotocol.canonical import canonical_hash, canonical_json
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.core import Core, InvalidCommand, MissionWeaveProtocolError
+from missionweaveprotocol.crypto import (
+    PrivateKeyLike,
+    generate_keypair,
+    sign_canonical,
+    verify_canonical,
+)
+from missionweaveprotocol.models import (
     ActorType,
     Command,
     CommandKind,
@@ -41,8 +46,11 @@ from missionweave.models import (
     Query,
     QueryKind,
 )
-from missionweave.offline import OFFLINE_EXECUTION_EXTENSION, OFFLINE_EXECUTION_EXTENSION_VERSION
-from missionweave.wire import (
+from missionweaveprotocol.offline import (
+    OFFLINE_EXECUTION_EXTENSION,
+    OFFLINE_EXECUTION_EXTENSION_VERSION,
+)
+from missionweaveprotocol.wire import (
     AckFrame,
     AttentionFilter,
     AuthFrame,
@@ -59,13 +67,13 @@ from missionweave.wire import (
     encode_frame,
     parse_frame,
 )
-from missionweave.wire import (
+from missionweaveprotocol.wire import (
     ErrorCode as WireErrorCode,
 )
 
 
 class GatewaySchemaError(ValueError):
-    """A transport document did not conform to a normative MissionWeave schema."""
+    """A transport document did not conform to a normative MissionWeaveProtocol schema."""
 
     def __init__(self, message: str, *, details: dict[str, JsonValue] | None = None) -> None:
         super().__init__(message)
@@ -139,7 +147,7 @@ class CoreGatewayAdapter:
         command_keys: AgentKeyRegistry,
         *,
         schema_root: Path | None = None,
-        authority_key_id: str = "urn:missionweave:key:group-gateway",
+        authority_key_id: str = "urn:missionweaveprotocol:key:group-gateway",
         authority_private_key: PrivateKeyLike | None = None,
         clock: Clock | None = None,
         supported_profiles: Mapping[str, str] | None = None,
@@ -174,7 +182,7 @@ class CoreGatewayAdapter:
             Command(
                 action_id=f"urn:uuid:{uuid4()}",
                 kind=CommandKind.OPEN_AGENT_SESSION,
-                actor=Principal.system("urn:missionweave:service:group-gateway"),
+                actor=Principal.system("urn:missionweaveprotocol:service:group-gateway"),
                 issued_at=self._now(),
                 payload=cast(
                     dict[str, JsonValue],
@@ -393,7 +401,7 @@ class CoreGatewayAdapter:
             "payload": event.payload,
             "acceptedBy": {
                 "type": "service",
-                "id": "urn:missionweave:service:group-gateway",
+                "id": "urn:missionweaveprotocol:service:group-gateway",
             },
             "commandHash": event.command_hash,
         }
@@ -438,7 +446,9 @@ class CoreGatewayAdapter:
     def _identifier(value: str, namespace: str) -> str:
         if _URI_PATTERN.fullmatch(value):
             return value
-        return f"urn:missionweave:{namespace}:{canonical_hash(value).removeprefix('sha256:')}"
+        return (
+            f"urn:missionweaveprotocol:{namespace}:{canonical_hash(value).removeprefix('sha256:')}"
+        )
 
     def _now(self) -> datetime:
         now = self._clock()
@@ -501,7 +511,7 @@ class GroupGateway:
         self._connections: dict[int, _Connection] = {}
         self._connections_lock = asyncio.Lock()
         self._session_open_lock = asyncio.Lock()
-        self.app = app or FastAPI(title="MissionWeave Group Gateway", version="0.1.0")
+        self.app = app or FastAPI(title="MissionWeaveProtocol Group Gateway", version="0.1.0")
         self.app.websocket("/ws")(self._handle)
 
     async def _handle(self, websocket: WebSocket) -> None:
@@ -728,7 +738,7 @@ def _wire_error_code(error: Exception) -> WireErrorCode:
         return WireErrorCode.AUTH_INVALID_SIGNATURE
     if isinstance(error, SubscriptionDenied):
         return WireErrorCode.MEMBERSHIP_REQUIRED
-    if isinstance(error, MissionWeaveError):
+    if isinstance(error, MissionWeaveProtocolError):
         mapping = {
             "invalid_command": WireErrorCode.INVALID_COMMAND,
             "not_found": WireErrorCode.GROUP_NOT_FOUND,

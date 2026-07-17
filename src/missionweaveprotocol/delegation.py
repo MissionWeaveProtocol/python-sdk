@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 
-from missionweave.models import (
+from missionweaveprotocol.models import (
     ActorType,
     DelegationGrant,
     Membership,

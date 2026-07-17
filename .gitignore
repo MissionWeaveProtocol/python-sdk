@@ -4,7 +4,7 @@
 .pytest_cache/
 .ruff_cache/
 .venv/
-.missionweave/
+.missionweaveprotocol/
 __pycache__/
 *.py[cod]
 *.sqlite3

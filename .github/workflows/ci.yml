@@ -18,13 +18,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: missionweave
-          POSTGRES_PASSWORD: missionweave
-          POSTGRES_USER: missionweave
+          POSTGRES_DB: missionweaveprotocol
+          POSTGRES_PASSWORD: missionweaveprotocol
+          POSTGRES_USER: missionweaveprotocol
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U missionweave -d missionweave"
+          --health-cmd "pg_isready -U missionweaveprotocol -d missionweaveprotocol"
           --health-interval 2s
           --health-timeout 2s
           --health-retries 20
@@ -56,11 +56,19 @@ jobs:
               r"agent[\s_-]+workgroup[\s_-]+protocol",
               re.IGNORECASE,
           )
-          legacy_repositories = (
-              "".join(("MissionWeave", "Protocol")),
-              "".join(("MissionWeave", "Python")),
+          display_fragment = "".join(("Mission", "Weave"))
+          machine_fragment = "".join(("mission", "weave"))
+          environment_fragment = "".join(("MISSION", "WEAVE"))
+          incomplete_identity_patterns = (
+              re.compile(rf"{re.escape(display_fragment)}(?!Protocol)"),
+              re.compile(rf"{re.escape(machine_fragment)}(?!protocol)"),
+              re.compile(rf"{re.escape(environment_fragment)}(?!PROTOCOL)"),
           )
-          mixed_environment_prefix = "".join(("Mission", "Weave", "_"))
+          approved_identities = (
+              "".join((display_fragment, "Protocol")),
+              "".join((machine_fragment, "protocol")),
+              "".join((environment_fragment, "PROTOCOL")),
+          )
           decision_record_word = "".join(chr(code) for code in (97, 100, 114))
           decision_record_pattern = re.compile(
               rf"\b{re.escape(decision_record_word)}\b",
@@ -77,6 +85,17 @@ jobs:
           }
           violations: list[str] = []
 
+          if any(
+              not pattern.search(fragment) or pattern.search(approved)
+              for pattern, fragment, approved in zip(
+                  incomplete_identity_patterns,
+                  (display_fragment, machine_fragment, environment_fragment),
+                  approved_identities,
+                  strict=True,
+              )
+          ):
+              raise SystemExit("product identity policy self-test failed")
+
           for path in sorted(root.rglob("*")):
               if ignored_parts.intersection(path.parts):
                   continue
@@ -84,6 +103,8 @@ jobs:
               lowered_path = rendered_path.casefold()
               if legacy_short in lowered_path:
                   violations.append(f"legacy path: {rendered_path}")
+              if any(pattern.search(rendered_path) for pattern in incomplete_identity_patterns):
+                  violations.append(f"incomplete product identity path: {rendered_path}")
               if decision_record_word in (part.casefold() for part in path.parts):
                   violations.append(f"retired documentation path: {rendered_path}")
               if not path.is_file():
@@ -96,10 +117,8 @@ jobs:
                   violations.append(f"legacy identifier: {rendered_path}")
               if legacy_phrase.search(content):
                   violations.append(f"legacy protocol name: {rendered_path}")
-              if any(name in content for name in legacy_repositories):
-                  violations.append(f"legacy repository name: {rendered_path}")
-              if mixed_environment_prefix in content:
-                  violations.append(f"mixed-case environment prefix: {rendered_path}")
+              if any(pattern.search(content) for pattern in incomplete_identity_patterns):
+                  violations.append(f"incomplete product identity: {rendered_path}")
               if decision_record_pattern.search(content):
                   violations.append(f"retired documentation reference: {rendered_path}")
 
@@ -117,15 +136,15 @@ jobs:
 
       - name: Run tests
         env:
-          MISSIONWEAVE_TEST_POSTGRES_URL: >-
-            postgresql://missionweave:missionweave@127.0.0.1:5432/missionweave
+          MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL: >-
+            postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:5432/missionweaveprotocol
         run: uv run pytest
 
       - name: Run conformance suite
-        run: uv run missionweave-conformance --root .
+        run: uv run missionweaveprotocol-conformance --root .
 
       - name: Run proof of concept
-        run: uv run missionweave-demo --workdir "${RUNNER_TEMP}/missionweave-poc"
+        run: uv run missionweaveprotocol-demo --workdir "${RUNNER_TEMP}/missionweaveprotocol-poc"
 
       - name: Build wheel and source distribution
         run: uv build

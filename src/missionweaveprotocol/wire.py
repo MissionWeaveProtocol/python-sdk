@@ -1,4 +1,4 @@
-"""Normative MissionWeave 0.1 canonical JSON WebSocket frame models."""
+"""Normative MissionWeaveProtocol 0.1 canonical JSON WebSocket frame models."""
 
 from __future__ import annotations
 
@@ -246,7 +246,7 @@ def parse_frame(payload: str | bytes) -> Frame:
 
 
 def encode_frame(frame: Frame) -> str:
-    """Encode one schema-valid frame using canonical MissionWeave JSON."""
+    """Encode one schema-valid frame using canonical MissionWeaveProtocol JSON."""
 
     value = _FRAME_ADAPTER.dump_python(frame, mode="json", by_alias=True, exclude_none=True)
     _FRAME_SCHEMAS.validate("websocket-frame.schema.json", value)

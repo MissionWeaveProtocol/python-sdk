@@ -6,7 +6,7 @@
       "deliverableId": "source-change",
       "description": "Source and test changes.",
       "mediaType": "application/vnd.git.patch",
-      "schema": "urn:missionweave:schema:opaque"
+      "schema": "urn:missionweaveprotocol:schema:opaque"
     }
   ],
   "inputArtifacts": [],

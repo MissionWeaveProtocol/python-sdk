@@ -28,7 +28,7 @@ from .models import (
 
 Clock = Callable[[], datetime]
 
-OFFLINE_EXECUTION_EXTENSION = "urn:missionweave:extension:bounded-offline-execution"
+OFFLINE_EXECUTION_EXTENSION = "urn:missionweaveprotocol:extension:bounded-offline-execution"
 OFFLINE_EXECUTION_EXTENSION_VERSION = "0.1.0"
 _REVERSIBLE_KINDS = frozenset(
     {

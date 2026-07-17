@@ -1,4 +1,4 @@
-"""Create disposable development keys and an Organization-signed MissionWeave Agent Registry."""
+"""Create disposable keys and an Organization-signed MissionWeaveProtocol Agent Registry."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 
-from missionweave.auth import default_agent_key_id
-from missionweave.crypto import generate_keypair, sign_canonical
-from missionweave.models import AgentCard, Capability
+from missionweaveprotocol.auth import default_agent_key_id
+from missionweaveprotocol.crypto import generate_keypair, sign_canonical
+from missionweaveprotocol.models import AgentCard, Capability
 
 _OBJECT_SCHEMA_HASH = "sha256:" + hashlib.sha256(b'{"type":"object"}').hexdigest()
 
@@ -28,14 +28,18 @@ def _write_private_text(path: Path, content: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=Path(".missionweave/dev-registry.json"))
-    parser.add_argument("--keys-output", type=Path, default=Path(".missionweave/dev-keys.json"))
+    parser.add_argument(
+        "--output", type=Path, default=Path(".missionweaveprotocol/dev-registry.json")
+    )
+    parser.add_argument(
+        "--keys-output", type=Path, default=Path(".missionweaveprotocol/dev-keys.json")
+    )
     args = parser.parse_args()
 
     organization_private, organization_public = generate_keypair()
     agent_private, agent_public = generate_keypair()
     authority_private, authority_public = generate_keypair()
-    agent_id = "urn:missionweave:agent:developer"
+    agent_id = "urn:missionweaveprotocol:agent:developer"
     agent_key_id = default_agent_key_id(agent_id)
     unsigned = AgentCard(
         agent_id=agent_id,
@@ -47,24 +51,24 @@ def main() -> None:
             Capability(
                 id="software.python",
                 version=1,
-                input_schema="https://missionweave.dev/schemas/capabilities/software-python-input.json",
-                output_schema="https://missionweave.dev/schemas/capabilities/software-python-output.json",
+                input_schema="https://missionweaveprotocol.dev/schemas/capabilities/software-python-input.json",
+                output_schema="https://missionweaveprotocol.dev/schemas/capabilities/software-python-output.json",
                 constraints={
                     "inputSchemaHash": _OBJECT_SCHEMA_HASH,
                     "outputSchemaHash": _OBJECT_SCHEMA_HASH,
                 },
-                verified_evidence=("urn:missionweave:evidence:developer-python",),
+                verified_evidence=("urn:missionweaveprotocol:evidence:developer-python",),
             ),
             Capability(
                 id="software.review",
                 version=1,
-                input_schema="https://missionweave.dev/schemas/capabilities/software-review-input.json",
-                output_schema="https://missionweave.dev/schemas/capabilities/software-review-output.json",
+                input_schema="https://missionweaveprotocol.dev/schemas/capabilities/software-review-input.json",
+                output_schema="https://missionweaveprotocol.dev/schemas/capabilities/software-review-output.json",
                 constraints={
                     "inputSchemaHash": _OBJECT_SCHEMA_HASH,
                     "outputSchemaHash": _OBJECT_SCHEMA_HASH,
                 },
-                verified_evidence=("urn:missionweave:evidence:developer-review",),
+                verified_evidence=("urn:missionweaveprotocol:evidence:developer-review",),
             ),
         ),
         issued_at=datetime.now(UTC),

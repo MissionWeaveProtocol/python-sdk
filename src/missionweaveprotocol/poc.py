@@ -1,4 +1,4 @@
-"""Executable deterministic MissionWeave 0.1 proof of concept.
+"""Executable deterministic MissionWeaveProtocol 0.1 proof of concept.
 
 The public Interface is intentionally small: ``run_poc`` for async callers,
 ``run_poc_sync`` for command-line callers, and a structured ``POCReport``.  The
@@ -23,11 +23,11 @@ import uvicorn
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from websockets.asyncio.client import ClientConnection, connect
 
-from missionweave.agent import AgentRuntime
-from missionweave.artifacts import ArtifactManifest, LocalArtifactStore
-from missionweave.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
-from missionweave.canonical import canonical_bytes, canonical_hash
-from missionweave.context import (
+from missionweaveprotocol.agent import AgentRuntime
+from missionweaveprotocol.artifacts import ArtifactManifest, LocalArtifactStore
+from missionweaveprotocol.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
+from missionweaveprotocol.canonical import canonical_bytes, canonical_hash
+from missionweaveprotocol.context import (
     ContextPackage,
     ContextPackageService,
     GroupSnapshot,
@@ -36,8 +36,8 @@ from missionweave.context import (
     PolicyLogEntry,
     SnapshotArchive,
 )
-from missionweave.control import HumanControl, HumanIdentity
-from missionweave.core import (
+from missionweaveprotocol.control import HumanControl, HumanIdentity
+from missionweaveprotocol.core import (
     ActionIdCollision,
     AuthorizationDenied,
     Core,
@@ -46,10 +46,10 @@ from missionweave.core import (
     StaleOwnershipEpoch,
     StaleSessionEpoch,
 )
-from missionweave.crypto import encode_private_key, encode_public_key, verify_canonical
-from missionweave.gateway import CoreGatewayAdapter, GroupGateway
-from missionweave.local_store import SQLiteAgentStore
-from missionweave.models import (
+from missionweaveprotocol.crypto import encode_private_key, encode_public_key, verify_canonical
+from missionweaveprotocol.gateway import CoreGatewayAdapter, GroupGateway
+from missionweaveprotocol.local_store import SQLiteAgentStore
+from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
     ActorType,
     AddMembershipPayload,
@@ -102,16 +102,16 @@ from missionweave.models import (
     WorkProposal,
     WorkProposalStatus,
 )
-from missionweave.offline import (
+from missionweaveprotocol.offline import (
     OFFLINE_EXECUTION_EXTENSION,
     OfflineExecutionPolicy,
     OfflineLimits,
     OfflinePolicyError,
     offline_command_to_wire,
 )
-from missionweave.policy import ResourceUsage
-from missionweave.replay import AgentReplay, EventProjection, EventProjector
-from missionweave.scheduler import (
+from missionweaveprotocol.policy import ResourceUsage
+from missionweaveprotocol.replay import AgentReplay, EventProjection, EventProjector
+from missionweaveprotocol.scheduler import (
     CheckpointRef,
     Dispatch,
     EstimateBand,
@@ -124,8 +124,8 @@ from missionweave.scheduler import (
     WorkOffer,
     WorkTransition,
 )
-from missionweave.store import InMemoryStore
-from missionweave.wire import (
+from missionweaveprotocol.store import InMemoryStore
+from missionweaveprotocol.wire import (
     AuthFrame,
     ChallengeFrame,
     CommandFrame,
@@ -156,7 +156,7 @@ MISSION_CLI = "mission:cli"
 GROUP_CLI = "group:cli"
 MISSION_SECURITY = "mission:authentication:security"
 GROUP_SECURITY = "group:authentication:security"
-SNAPSHOT_AUTHORITY_KEY_ID = "urn:missionweave:key:system:snapshot-archive"
+SNAPSHOT_AUTHORITY_KEY_ID = "urn:missionweaveprotocol:key:system:snapshot-archive"
 
 
 @dataclass(slots=True)
@@ -215,7 +215,7 @@ class POCReport:
     def require_success(self) -> None:
         failures = [name for name, passed in self.checks if not passed]
         if not self.passed or failures:
-            raise AssertionError(f"MissionWeave POC failed checks: {failures}")
+            raise AssertionError(f"MissionWeaveProtocol POC failed checks: {failures}")
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -251,12 +251,14 @@ class _LiveGateway:
         adapter = CoreGatewayAdapter(
             scenario.core,
             keys,
-            authority_private_key=hashlib.sha256(b"missionweave-poc-gateway-authority").digest(),
+            authority_private_key=hashlib.sha256(
+                b"missionweaveprotocol-poc-gateway-authority"
+            ).digest(),
             clock=scenario.clock,
         )
         sessions = SessionAuthority(
             keys,
-            secret=b"missionweave-poc-session-secret-fixed!!",
+            secret=b"missionweaveprotocol-poc-session-secret-fixed!!",
             clock=scenario.clock,
         )
         self._gateway = GroupGateway(adapter, sessions, clock=scenario.clock)
@@ -303,7 +305,7 @@ class _LiveGateway:
             encode_frame(
                 HelloFrame(
                     agent_id=identity.agent_id,
-                    key_id="urn:missionweave:key:reviewer",
+                    key_id="urn:missionweaveprotocol:key:reviewer",
                     client_nonce="cG9jLWNsaWVudC1ub25jZQ",
                 )
             )
@@ -315,7 +317,7 @@ class _LiveGateway:
             encode_frame(
                 AuthFrame(
                     agent_id=identity.agent_id,
-                    key_id="urn:missionweave:key:reviewer",
+                    key_id="urn:missionweaveprotocol:key:reviewer",
                     client_nonce=challenge.client_nonce,
                     server_nonce=challenge.server_nonce,
                     challenge_signature=identity.sign(_decode_base64url(challenge.challenge)),
@@ -353,12 +355,12 @@ class _LiveGateway:
 
 
 def _deterministic_identity(principal_id: str) -> AgentIdentity:
-    seed = hashlib.sha256(f"missionweave-poc:{principal_id}".encode()).digest()
+    seed = hashlib.sha256(f"missionweaveprotocol-poc:{principal_id}".encode()).digest()
     return AgentIdentity(principal_id, Ed25519PrivateKey.from_private_bytes(seed))
 
 
 def _deterministic_human_identity(human_id: str) -> HumanIdentity:
-    seed = hashlib.sha256(f"missionweave-poc:{human_id}".encode()).digest()
+    seed = hashlib.sha256(f"missionweaveprotocol-poc:{human_id}".encode()).digest()
     private_key = Ed25519PrivateKey.from_private_bytes(seed)
     return HumanIdentity(
         human_id=human_id,
@@ -1390,7 +1392,7 @@ async def _run(root: Path) -> POCReport:
     cli_implementation_manifest = await scenario.publish_submit_verify(
         work_item_id=reassigned.id,
         artifact_id="artifact:cli:implementation",
-        content=b'{"command":"missionweave-demo","status":"implemented"}',
+        content=b'{"command":"missionweaveprotocol-demo","status":"implemented"}',
         worker_id=CODER,
         coordinator_id=COORD_CLI_REPLACEMENT,
         coordinator_epoch=2,
@@ -1510,10 +1512,10 @@ async def _run(root: Path) -> POCReport:
     if not isinstance(reviewer_auth_membership, Membership):
         raise AssertionError("reviewer provisional Membership is missing")
     context_events = await scenario.core.replay(GROUP_AUTH)
-    context_private_key = hashlib.sha256(f"missionweave-poc:{COORD_AUTH}".encode()).digest()
+    context_private_key = hashlib.sha256(f"missionweaveprotocol-poc:{COORD_AUTH}".encode()).digest()
     context_service = ContextPackageService(
         agent_id=COORD_AUTH,
-        key_id="urn:missionweave:key:coordinator-auth:context",
+        key_id="urn:missionweaveprotocol:key:coordinator-auth:context",
         private_key=context_private_key,
         public_key=scenario.identities[COORD_AUTH].public_key,
     )
@@ -1547,7 +1549,7 @@ async def _run(root: Path) -> POCReport:
     )
     knowledge_publisher = KnowledgePublisher(
         publisher=Principal.agent(COORD_AUTH),
-        key_id="urn:missionweave:key:coordinator-auth:knowledge",
+        key_id="urn:missionweaveprotocol:key:coordinator-auth:knowledge",
         private_key=context_private_key,
         public_key=scenario.identities[COORD_AUTH].public_key,
     )
@@ -1786,7 +1788,7 @@ async def _run(root: Path) -> POCReport:
     await live_gateway.subscribe(
         online_connection,
         await _group_heads(scenario.core, (GROUP_AUTH, GROUP_CLI)),
-        subscription_id="urn:missionweave:subscription:reviewer-online",
+        subscription_id="urn:missionweaveprotocol:subscription:reviewer-online",
     )
     second_runtime = AgentRuntime(REVIEWER, reviewer_scheduler)
     second_session = second_runtime.start_session(
@@ -2092,7 +2094,7 @@ async def _run(root: Path) -> POCReport:
     await live_gateway.subscribe(
         reconnected,
         await _group_heads(scenario.core, (GROUP_AUTH, GROUP_CLI)),
-        subscription_id="urn:missionweave:subscription:reviewer-reconnected",
+        subscription_id="urn:missionweaveprotocol:subscription:reviewer-reconnected",
     )
     reconciled, gateway_event_kinds = await _reconcile_outbox_through_gateway(
         scenario,
@@ -2590,7 +2592,7 @@ async def _run(root: Path) -> POCReport:
         "mission": final_cli.model_dump(mode="json", by_alias=True),
         "approval": cli_approval_result.model_dump(mode="json", by_alias=True),
     }
-    snapshot_private_key = hashlib.sha256(f"missionweave-poc:{SYSTEM_ID}".encode()).digest()
+    snapshot_private_key = hashlib.sha256(f"missionweaveprotocol-poc:{SYSTEM_ID}".encode()).digest()
     snapshot_archive = SnapshotArchive(
         authority=scenario.system,
         key_id=SNAPSHOT_AUTHORITY_KEY_ID,
@@ -2747,11 +2749,11 @@ async def _run(root: Path) -> POCReport:
 
 
 async def run_poc(workdir: Path | None = None) -> POCReport:
-    """Run the deterministic MissionWeave v0.1 scenario or raise on any missing behavior."""
+    """Run the deterministic MissionWeaveProtocol v0.1 scenario or raise on any missing behavior."""
 
     if workdir is not None:
         return await _run(workdir)
-    with TemporaryDirectory(prefix="missionweave-poc-") as temporary:
+    with TemporaryDirectory(prefix="missionweaveprotocol-poc-") as temporary:
         return await _run(Path(temporary))
 
 

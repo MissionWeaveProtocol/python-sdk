@@ -1,4 +1,4 @@
-"""Ed25519 helpers for MissionWeave Commands, Events, and Artifact manifests."""
+"""Ed25519 helpers for MissionWeaveProtocol Commands, Events, and Artifact manifests."""
 
 from __future__ import annotations
 

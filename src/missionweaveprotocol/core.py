@@ -1,4 +1,4 @@
-"""Authoritative MissionWeave state-transition Module.
+"""Authoritative MissionWeaveProtocol state-transition Module.
 
 Callers need to learn only three operations: ``perform`` a Command, ``query`` current state, and
 ``replay`` a Group history.  Authorization, idempotency, state machines, leases, dependency
@@ -134,7 +134,7 @@ class ErrorCode(StrEnum):
     BUDGET_EXCEEDED = "budget_exceeded"
 
 
-class MissionWeaveError(Exception):
+class MissionWeaveProtocolError(Exception):
     """Base error with stable protocol code and structured details."""
 
     code = ErrorCode.INVALID_COMMAND
@@ -148,63 +148,63 @@ class MissionWeaveError(Exception):
         return {"code": self.code.value, "message": self.message, "details": self.details}
 
 
-class InvalidCommand(MissionWeaveError):
+class InvalidCommand(MissionWeaveProtocolError):
     code = ErrorCode.INVALID_COMMAND
 
 
-class NotFound(MissionWeaveError):
+class NotFound(MissionWeaveProtocolError):
     code = ErrorCode.NOT_FOUND
 
 
-class AlreadyExists(MissionWeaveError):
+class AlreadyExists(MissionWeaveProtocolError):
     code = ErrorCode.ALREADY_EXISTS
 
 
-class AuthorizationDenied(MissionWeaveError):
+class AuthorizationDenied(MissionWeaveProtocolError):
     code = ErrorCode.AUTHORIZATION_DENIED
 
 
-class ActionIdCollision(MissionWeaveError):
+class ActionIdCollision(MissionWeaveProtocolError):
     code = ErrorCode.ACTION_ID_COLLISION
 
 
-class StaleSessionEpoch(MissionWeaveError):
+class StaleSessionEpoch(MissionWeaveProtocolError):
     code = ErrorCode.STALE_SESSION_EPOCH
 
 
-class StaleMembershipEpoch(MissionWeaveError):
+class StaleMembershipEpoch(MissionWeaveProtocolError):
     code = ErrorCode.STALE_MEMBERSHIP_EPOCH
 
 
-class StaleCoordinatorEpoch(MissionWeaveError):
+class StaleCoordinatorEpoch(MissionWeaveProtocolError):
     code = ErrorCode.STALE_COORDINATOR_EPOCH
 
 
-class StaleOwnershipEpoch(MissionWeaveError):
+class StaleOwnershipEpoch(MissionWeaveProtocolError):
     code = ErrorCode.STALE_OWNERSHIP_EPOCH
 
 
-class LeaseExpired(MissionWeaveError):
+class LeaseExpired(MissionWeaveProtocolError):
     code = ErrorCode.LEASE_EXPIRED
 
 
-class InvalidTransition(MissionWeaveError):
+class InvalidTransition(MissionWeaveProtocolError):
     code = ErrorCode.INVALID_TRANSITION
 
 
-class RevisionConflict(MissionWeaveError):
+class RevisionConflict(MissionWeaveProtocolError):
     code = ErrorCode.REVISION_CONFLICT
 
 
-class DependencyError(MissionWeaveError):
+class DependencyError(MissionWeaveProtocolError):
     code = ErrorCode.DEPENDENCY_ERROR
 
 
-class PolicyViolation(MissionWeaveError):
+class PolicyViolation(MissionWeaveProtocolError):
     code = ErrorCode.POLICY_VIOLATION
 
 
-class BudgetExceeded(MissionWeaveError):
+class BudgetExceeded(MissionWeaveProtocolError):
     code = ErrorCode.BUDGET_EXCEEDED
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from missionweave.conformance import run_manifest
+from missionweaveprotocol.conformance import run_manifest
 
 
 def test_repository_conformance_manifest() -> None:
@@ -24,7 +24,7 @@ def test_manifest_runner_checks_expected_validity(tmp_path) -> None:
         json.dumps(
             {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "$id": "https://missionweave.dev/schema/test-value.json",
+                "$id": "https://missionweaveprotocol.dev/schema/test-value.json",
                 "type": "object",
                 "required": ["value"],
                 "properties": {"value": {"type": "integer"}},

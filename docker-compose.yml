@@ -2,18 +2,18 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: missionweave
-      POSTGRES_USER: missionweave
-      POSTGRES_PASSWORD: missionweave
+      POSTGRES_DB: missionweaveprotocol
+      POSTGRES_USER: missionweaveprotocol
+      POSTGRES_PASSWORD: missionweaveprotocol
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U missionweave -d missionweave"]
+      test: ["CMD-SHELL", "pg_isready -U missionweaveprotocol -d missionweaveprotocol"]
       interval: 2s
       timeout: 2s
       retries: 20
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
-      - missionweave-postgres:/var/lib/postgresql/data
+      - missionweaveprotocol-postgres:/var/lib/postgresql/data
 
 volumes:
-  missionweave-postgres:
+  missionweaveprotocol-postgres:

@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Any
 from uuid import uuid4
 
-from missionweave.scheduler import Dispatch, Scheduler
+from missionweaveprotocol.scheduler import Dispatch, Scheduler
 
 
 class ActiveSessionError(RuntimeError):

@@ -1,23 +1,23 @@
 {
-  "snapshotId": "urn:missionweave:snapshot:mission-one-final",
-  "groupId": "urn:missionweave:group:mission-one",
+  "snapshotId": "urn:missionweaveprotocol:snapshot:mission-one-final",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "throughSequence": 42,
-  "eventIds": ["urn:missionweave:event:one", "urn:missionweave:event:two"],
+  "eventIds": ["urn:missionweaveprotocol:event:one", "urn:missionweaveprotocol:event:two"],
   "stateHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "policyLog": [
     {
-      "entryId": "urn:missionweave:policy-log:approval",
+      "entryId": "urn:missionweaveprotocol:policy-log:approval",
       "decision": "Verified exact signed human approval.",
-      "actor": { "type": "service", "id": "urn:missionweave:service:authorization" },
+      "actor": { "type": "service", "id": "urn:missionweaveprotocol:service:authorization" },
       "occurredAt": "2026-07-15T02:00:00Z",
-      "details": { "approvalId": "urn:missionweave:approval:final" }
+      "details": { "approvalId": "urn:missionweaveprotocol:approval:final" }
     }
   ],
-  "createdBy": { "type": "service", "id": "urn:missionweave:service:group-authority" },
+  "createdBy": { "type": "service", "id": "urn:missionweaveprotocol:service:group-authority" },
   "createdAt": "2026-07-15T02:00:00Z",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:group-authority",
+    "keyId": "urn:missionweaveprotocol:key:group-authority",
     "createdAt": "2026-07-15T02:00:00Z",
     "value": "c2lnbmF0dXJl"
   }

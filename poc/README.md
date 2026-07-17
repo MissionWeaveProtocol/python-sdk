@@ -1,4 +1,4 @@
-# MissionWeave 0.1 proof of concept
+# MissionWeaveProtocol 0.1 proof of concept
 
 The POC is an executable conformance scenario, not a conversational mock.
 

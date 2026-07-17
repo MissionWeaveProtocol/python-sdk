@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from missionweave.cli import load_agent_cards
+from missionweaveprotocol.cli import load_agent_cards
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,7 +42,7 @@ def test_dev_private_keys_are_written_with_owner_only_permissions(
     assert stat.S_IMODE(keys_path.stat().st_mode) == 0o600
     keys = json.loads(keys_path.read_text(encoding="utf-8"))
     assert "authorityPrivateKey" in keys
-    assert keys["agentKeyId"] == "urn:missionweave:key:developer"
+    assert keys["agentKeyId"] == "urn:missionweaveprotocol:key:developer"
     cards = load_agent_cards(
         registry_path,
         organization_public_key=keys["organizationPublicKey"],

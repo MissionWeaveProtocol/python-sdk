@@ -1,6 +1,6 @@
 {
-  "missionId": "urn:missionweave:mission:legacy-completed",
-  "groupId": "urn:missionweave:group:legacy-completed",
+  "missionId": "urn:missionweaveprotocol:mission:legacy-completed",
+  "groupId": "urn:missionweaveprotocol:group:legacy-completed",
   "revision": 6,
   "objective": "Reject a legacy Mission state alias.",
   "definitionOfDone": [
@@ -10,12 +10,12 @@
       "evidenceRequired": ["deterministic_test"]
     }
   ],
-  "missionOwner": {"type": "human", "id": "urn:missionweave:human:mission-owner"},
+  "missionOwner": {"type": "human", "id": "urn:missionweaveprotocol:human:mission-owner"},
   "coordinator": {
-    "agentId": "urn:missionweave:agent:coordinator",
+    "agentId": "urn:missionweaveprotocol:agent:coordinator",
     "agentCardVersion": 2,
     "coordinatorEpoch": 4,
-    "leaseId": "urn:missionweave:lease:coordinator-four"
+    "leaseId": "urn:missionweaveprotocol:lease:coordinator-four"
   },
   "state": "completed",
   "budget": {

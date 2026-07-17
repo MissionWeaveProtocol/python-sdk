@@ -1,11 +1,14 @@
-# Vendored MissionWeave 0.1 JSON Schemas
+# MissionWeaveProtocol 0.1 JSON Schemas
 
-These 21 JSON Schema Draft 2020-12 files are a vendored snapshot from the
-[MissionWeave Protocol repository](https://github.com/missionweaveprotocol/missionweaveprotocol).
-They are included so the Python implementation can validate protocol documents offline and ship
-the same schemas inside its wheel.
+These 21 files are the normative JSON Schema Draft 2020-12 definitions for
+MissionWeaveProtocol 0.1. Wire property names are lowerCamelCase. Core objects reject unknown
+properties; approved Extension Profile data is carried only in explicit `extensions` members.
 
-The canonical schemas live in the protocol repository. Do not edit this directory independently.
+Schema identifiers use `https://missionweaveprotocol.dev/schemas/0.1/`. A validator must
+register every schema in this directory by its `$id` before resolving references. The
+conformance manifest at `../conformance/manifest.json` maps schemas to valid and invalid
+instances.
 
-Schema identifiers use `https://missionweave.dev/schemas/0.1/`. A validator must register every
-schema in this directory by its `$id` before resolving references.
+Schema validation proves structural conformance only. Implementations must additionally
+enforce the state-machine, ordering, epoch, lease, budget, hierarchy, timestamp-ordering,
+signature, and authorization rules in `../spec/PROTOCOL.md`.

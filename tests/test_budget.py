@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from missionweave.budget import (
+from missionweaveprotocol.budget import (
     BudgetLedger,
     BudgetLedgerError,
     BudgetLedgerSnapshot,
@@ -14,8 +14,8 @@ from missionweave.budget import (
     MissionBudgetState,
     WorkItemBudgetState,
 )
-from missionweave.models import ResourceBudget
-from missionweave.policy import ResourceUsage
+from missionweaveprotocol.models import ResourceBudget
+from missionweaveprotocol.policy import ResourceUsage
 
 DIMENSIONS = tuple(ResourceUsage.model_fields)
 

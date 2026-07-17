@@ -1,19 +1,19 @@
 {
-  "evidenceId": "urn:missionweave:evidence:integration-tests",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "workItemId": "urn:missionweave:work-item:implementation",
+  "evidenceId": "urn:missionweaveprotocol:evidence:integration-tests",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
   "type": "deterministic_test",
-  "subject": {"type": "work_item", "id": "urn:missionweave:work-item:implementation"},
+  "subject": {"type": "work_item", "id": "urn:missionweaveprotocol:work-item:implementation"},
   "criterionIds": [],
   "method": "Run tests.",
   "result": "passed",
   "artifactHashes": [],
-  "generatedBy": {"type": "agent", "id": "urn:missionweave:agent:test-reviewer"},
+  "generatedBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:test-reviewer"},
   "createdAt": "2026-07-15T03:10:00Z",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:test-reviewer",
+    "keyId": "urn:missionweaveprotocol:key:test-reviewer",
     "createdAt": "2026-07-15T03:10:00Z",
     "value": "c2lnbmF0dXJl"
   }

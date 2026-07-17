@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.auth import AgentIdentity
-from missionweave.registry import (
+from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.registry import (
     AgentCard,
     AgentRegistry,
     CapabilityDescriptor,

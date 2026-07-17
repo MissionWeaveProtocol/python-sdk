@@ -1,6 +1,6 @@
 {
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "revision": 6,
   "objective": "Implement and verify the requested API feature.",
   "definitionOfDone": [
@@ -10,12 +10,12 @@
       "evidenceRequired": ["deterministic_test"]
     }
   ],
-  "missionOwner": {"type": "human", "id": "urn:missionweave:human:mission-owner"},
+  "missionOwner": {"type": "human", "id": "urn:missionweaveprotocol:human:mission-owner"},
   "coordinator": {
-    "agentId": "urn:missionweave:agent:coordinator",
+    "agentId": "urn:missionweaveprotocol:agent:coordinator",
     "agentCardVersion": 2,
     "coordinatorEpoch": 4,
-    "leaseId": "urn:missionweave:lease:coordinator-four"
+    "leaseId": "urn:missionweaveprotocol:lease:coordinator-four"
   },
   "state": "active",
   "budget": {

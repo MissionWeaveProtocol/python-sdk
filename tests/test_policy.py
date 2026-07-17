@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.crypto import generate_keypair, sign_canonical
-from missionweave.lease import ExecutionLease, LeaseState
-from missionweave.models import (
+from missionweaveprotocol.crypto import generate_keypair, sign_canonical
+from missionweaveprotocol.lease import ExecutionLease, LeaseState
+from missionweaveprotocol.models import (
     Command,
     CommandKind,
     Event,
@@ -26,7 +26,7 @@ from missionweave.models import (
     WorkItem,
     WorkItemStatus,
 )
-from missionweave.policy import (
+from missionweaveprotocol.policy import (
     AuthorizationService,
     BudgetMeter,
     CooperationLimits,

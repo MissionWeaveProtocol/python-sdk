@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 import pytest
 from jsonschema import ValidationError as JSONSchemaValidationError
 
-from missionweave.conformance import SchemaCatalog
-from missionweave.wire import (
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.wire import (
     AckFrame,
     Acknowledgement,
     AuthFrame,
@@ -29,17 +29,17 @@ from missionweave.wire import (
 NOW = datetime(2026, 7, 15, tzinfo=UTC)
 SIGNATURE = {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:agent",
+    "keyId": "urn:missionweaveprotocol:key:agent",
     "createdAt": "2026-07-15T00:00:00Z",
     "value": "c2lnbmF0dXJl",
 }
 COMMAND = {
     "protocolVersion": "0.1",
     "actionId": "urn:uuid:00000000-0000-4000-8000-000000000001",
-    "actor": {"type": "agent", "id": "urn:missionweave:agent:reviewer"},
+    "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:reviewer"},
     "sessionEpoch": 1,
     "membershipEpoch": 1,
-    "groupId": "urn:missionweave:group:mission",
+    "groupId": "urn:missionweaveprotocol:group:mission",
     "kind": "message.post",
     "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000099",
     "issuedAt": "2026-07-15T00:00:00Z",
@@ -49,16 +49,16 @@ COMMAND = {
 EVENT = {
     "protocolVersion": "0.1",
     "eventId": "urn:uuid:00000000-0000-4000-8000-000000000002",
-    "groupId": "urn:missionweave:group:mission",
+    "groupId": "urn:missionweaveprotocol:group:mission",
     "sequence": 1,
     "aggregateRevision": 1,
     "kind": "message.posted",
-    "actor": {"type": "agent", "id": "urn:missionweave:agent:reviewer"},
+    "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:reviewer"},
     "cause": {"type": "command", "id": COMMAND["actionId"]},
     "correlationId": COMMAND["correlationId"],
     "occurredAt": "2026-07-15T00:00:01Z",
     "payload": {},
-    "acceptedBy": {"type": "service", "id": "urn:missionweave:service:gateway"},
+    "acceptedBy": {"type": "service", "id": "urn:missionweaveprotocol:service:gateway"},
     "signature": SIGNATURE,
 }
 
@@ -66,8 +66,8 @@ EVENT = {
 def _frames() -> tuple[object, ...]:
     return (
         HelloFrame(
-            agent_id="urn:missionweave:agent:reviewer",
-            key_id="urn:missionweave:key:agent",
+            agent_id="urn:missionweaveprotocol:agent:reviewer",
+            key_id="urn:missionweaveprotocol:key:agent",
             client_nonce="Y2xpZW50",
         ),
         ChallengeFrame(
@@ -76,8 +76,8 @@ def _frames() -> tuple[object, ...]:
             challenge="Y2hhbGxlbmdl",
         ),
         AuthFrame(
-            agent_id="urn:missionweave:agent:reviewer",
-            key_id="urn:missionweave:key:agent",
+            agent_id="urn:missionweaveprotocol:agent:reviewer",
+            key_id="urn:missionweaveprotocol:key:agent",
             client_nonce="Y2xpZW50",
             server_nonce="c2VydmVy",
             challenge_signature="c2lnbmF0dXJl",
@@ -88,14 +88,14 @@ def _frames() -> tuple[object, ...]:
             expires_at=NOW,
         ),
         SubscribeFrame(
-            subscription_id="urn:missionweave:subscription:reviewer",
-            groups=(GroupCursor(group_id="urn:missionweave:group:mission"),),
+            subscription_id="urn:missionweaveprotocol:subscription:reviewer",
+            groups=(GroupCursor(group_id="urn:missionweaveprotocol:group:mission"),),
         ),
         CommandFrame(command=COMMAND),
         EventFrame(event=EVENT),
         AckFrame(
             acknowledgements=(
-                Acknowledgement(group_id="urn:missionweave:group:mission", sequence=1),
+                Acknowledgement(group_id="urn:missionweaveprotocol:group:mission", sequence=1),
             ),
             sent_at=NOW,
         ),
@@ -121,10 +121,10 @@ def test_every_encoded_frame_validates_against_normative_schema(frame: object) -
 
 def test_one_subscription_multiplexes_many_group_cursors() -> None:
     frame = SubscribeFrame(
-        subscription_id="urn:missionweave:subscription:reviewer",
+        subscription_id="urn:missionweaveprotocol:subscription:reviewer",
         groups=(
-            GroupCursor(group_id="urn:missionweave:group:auth", after_sequence=10),
-            GroupCursor(group_id="urn:missionweave:group:cli", after_sequence=4),
+            GroupCursor(group_id="urn:missionweaveprotocol:group:auth", after_sequence=10),
+            GroupCursor(group_id="urn:missionweaveprotocol:group:cli", after_sequence=4),
         ),
     )
 
@@ -132,8 +132,8 @@ def test_one_subscription_multiplexes_many_group_cursors() -> None:
 
     assert isinstance(parsed, SubscribeFrame)
     assert [cursor.group_id for cursor in parsed.groups] == [
-        "urn:missionweave:group:auth",
-        "urn:missionweave:group:cli",
+        "urn:missionweaveprotocol:group:auth",
+        "urn:missionweaveprotocol:group:cli",
     ]
 
 
@@ -149,8 +149,8 @@ def test_unknown_extra_and_duplicate_frame_fields_are_rejected() -> None:
 
 def test_hello_has_identity_but_no_role_authority() -> None:
     hello = HelloFrame(
-        agent_id="urn:missionweave:agent:reviewer",
-        key_id="urn:missionweave:key:agent",
+        agent_id="urn:missionweaveprotocol:agent:reviewer",
+        key_id="urn:missionweaveprotocol:key:agent",
         client_nonce="Y2xpZW50",
     )
     encoded = encode_frame(hello)
@@ -165,8 +165,8 @@ def test_command_frame_round_trips_extension_data_without_promoting_core_fields(
             "critical": False,
             "data": {
                 "kind": "mission.approved",
-                "actor": {"type": "human", "id": "urn:missionweave:human:forged"},
-                "groupId": "urn:missionweave:group:forged",
+                "actor": {"type": "human", "id": "urn:missionweaveprotocol:human:forged"},
+                "groupId": "urn:missionweaveprotocol:group:forged",
                 "payload": {"forged": True},
                 "signature": {"value": "forged"},
             },

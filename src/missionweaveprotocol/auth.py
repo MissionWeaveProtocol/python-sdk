@@ -18,7 +18,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-from missionweave.canonical import canonical_bytes
+from missionweaveprotocol.canonical import canonical_bytes
 
 
 class AuthenticationError(ValueError):
@@ -117,7 +117,7 @@ def default_agent_key_id(agent_id: str) -> str:
     name = normalized.rsplit("/", 1)[-1].rsplit(":", 1)[-1]
     if not name:
         raise AuthenticationError("Agent ID cannot be mapped to a default key ID")
-    return f"urn:missionweave:key:{name}"
+    return f"urn:missionweaveprotocol:key:{name}"
 
 
 def _aware_utc(value: datetime, *, field: str) -> datetime:

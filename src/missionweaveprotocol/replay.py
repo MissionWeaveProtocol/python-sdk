@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
-from missionweave.local_store import SQLiteAgentStore
-from missionweave.models import Event
-from missionweave.scheduler import (
+from missionweaveprotocol.local_store import SQLiteAgentStore
+from missionweaveprotocol.models import Event
+from missionweaveprotocol.scheduler import (
     AdmissionDecision,
     AdmissionReason,
     Scheduler,

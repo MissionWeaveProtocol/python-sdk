@@ -1,1 +1,1 @@
-"""MissionWeave reference implementation tests."""
+"""MissionWeaveProtocol reference implementation tests."""

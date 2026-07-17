@@ -11,17 +11,17 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from missionweave.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
-from missionweave.canonical import canonical_bytes
-from missionweave.core import Core, StaleSessionEpoch
-from missionweave.crypto import generate_keypair, verify_canonical
-from missionweave.gateway import (
+from missionweaveprotocol.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
+from missionweaveprotocol.canonical import canonical_bytes
+from missionweaveprotocol.core import Core, StaleSessionEpoch
+from missionweaveprotocol.crypto import generate_keypair, verify_canonical
+from missionweaveprotocol.gateway import (
     CoreGatewayAdapter,
     GatewaySchemaError,
     GroupGateway,
     UnknownCriticalExtension,
 )
-from missionweave.models import (
+from missionweaveprotocol.models import (
     AddMembershipPayload,
     AgentCard,
     Capability,
@@ -40,8 +40,8 @@ from missionweave.models import (
     SelectionBasis,
     WorkContract,
 )
-from missionweave.store import InMemoryStore
-from missionweave.wire import (
+from missionweaveprotocol.store import InMemoryStore
+from missionweaveprotocol.wire import (
     AckFrame,
     Acknowledgement,
     AttentionFilter,
@@ -59,13 +59,13 @@ from missionweave.wire import (
     parse_frame,
 )
 
-AGENT_ID = "urn:missionweave:agent:reviewer"
-KEY_ID = "urn:missionweave:key:reviewer"
-GROUP_ID = "urn:missionweave:group:mission"
-OTHER_GROUP_ID = "urn:missionweave:group:mission-two"
-MISSION_ID = "urn:missionweave:mission:one"
+AGENT_ID = "urn:missionweaveprotocol:agent:reviewer"
+KEY_ID = "urn:missionweaveprotocol:key:reviewer"
+GROUP_ID = "urn:missionweaveprotocol:group:mission"
+OTHER_GROUP_ID = "urn:missionweaveprotocol:group:mission-two"
+MISSION_ID = "urn:missionweaveprotocol:mission:one"
 CONVERSATION_ID = f"{GROUP_ID}:mission"
-WORK_ID = "urn:missionweave:work:resource-usage"
+WORK_ID = "urn:missionweaveprotocol:work:resource-usage"
 SESSION_SECRET = b"x" * 32
 
 
@@ -104,7 +104,7 @@ class FakeCore:
         )
         event = {
             "protocolVersion": "0.1",
-            "eventId": f"urn:missionweave:event:{len(self.events) + 1}",
+            "eventId": f"urn:missionweaveprotocol:event:{len(self.events) + 1}",
             "groupId": group_id,
             "sequence": sequence,
             "aggregateRevision": sequence,
@@ -117,11 +117,11 @@ class FakeCore:
             "payload": {"sessionEpoch": session_epoch},
             "acceptedBy": {
                 "type": "service",
-                "id": "urn:missionweave:service:group-gateway",
+                "id": "urn:missionweaveprotocol:service:group-gateway",
             },
             "signature": {
                 "algorithm": "Ed25519",
-                "keyId": "urn:missionweave:key:group-gateway",
+                "keyId": "urn:missionweaveprotocol:key:group-gateway",
                 "createdAt": "2026-07-15T00:00:01Z",
                 "value": "c2lnbmF0dXJl",
             },
@@ -182,21 +182,21 @@ def _unsigned_command(
 ) -> dict[str, Any]:
     command_issued_at = issued_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
     payload = {
-        "messageId": f"urn:missionweave:message:{action_number}",
+        "messageId": f"urn:missionweaveprotocol:message:{action_number}",
         "content": f"message {action_number}",
     }
     if emit_kind is not None:
         payload["emitKind"] = emit_kind
     return {
         "protocolVersion": "0.1",
-        "actionId": f"urn:missionweave:action:{action_number}",
+        "actionId": f"urn:missionweaveprotocol:action:{action_number}",
         "actor": {"type": "agent", "id": AGENT_ID},
         "sessionEpoch": session_epoch,
         "membershipEpoch": 1,
         "groupId": group_id,
         "conversationId": f"{group_id}:mission",
         "kind": "message.post",
-        "correlationId": f"urn:missionweave:correlation:{action_number}",
+        "correlationId": f"urn:missionweaveprotocol:correlation:{action_number}",
         "issuedAt": command_issued_at,
         "payload": payload,
     }
@@ -255,7 +255,7 @@ def _card(identity: AgentIdentity) -> AgentCard:
         agent_id=identity.agent_id,
         version=1,
         display_name="Reviewer",
-        owner="MissionWeave tests",
+        owner="MissionWeaveProtocol tests",
         public_key=identity.public_key,
         capabilities=(Capability(id="code.review", version=1),),
         issued_at=datetime.now(UTC),
@@ -266,9 +266,11 @@ def _card(identity: AgentIdentity) -> AgentCard:
 async def _register_card(core: Core, card: AgentCard) -> None:
     await core.perform(
         Command(
-            action_id=f"urn:missionweave:action:register:{card.agent_id.rsplit(':', 1)[-1]}",
+            action_id=(
+                f"urn:missionweaveprotocol:action:register:{card.agent_id.rsplit(':', 1)[-1]}"
+            ),
             kind=CommandKind.REGISTER_AGENT_CARD,
-            actor=Principal.system("urn:missionweave:service:registry"),
+            actor=Principal.system("urn:missionweaveprotocol:service:registry"),
             issued_at=datetime.now(UTC),
             payload=RegisterAgentCardPayload(card=card),
             signature="registry-signature",
@@ -280,9 +282,9 @@ async def _bootstrap_mission(core: Core, card: AgentCard) -> None:
     await _register_card(core, card)
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:create-mission",
+            action_id="urn:missionweaveprotocol:action:create-mission",
             kind=CommandKind.CREATE_MISSION,
-            actor=Principal.human("urn:missionweave:human:owner"),
+            actor=Principal.human("urn:missionweaveprotocol:human:owner"),
             group_id=GROUP_ID,
             issued_at=datetime.now(UTC),
             payload=CreateMissionPayload(
@@ -303,9 +305,9 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     await _register_card(core, card)
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:create-usage-mission",
+            action_id="urn:missionweaveprotocol:action:create-usage-mission",
             kind=CommandKind.CREATE_MISSION,
-            actor=Principal.human("urn:missionweave:human:owner"),
+            actor=Principal.human("urn:missionweaveprotocol:human:owner"),
             group_id=GROUP_ID,
             issued_at=datetime.now(UTC),
             payload=CreateMissionPayload(
@@ -323,9 +325,9 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     )
     session = await core.perform(
         Command(
-            action_id="urn:missionweave:action:open-usage-coordinator-session",
+            action_id="urn:missionweaveprotocol:action:open-usage-coordinator-session",
             kind=CommandKind.OPEN_AGENT_SESSION,
-            actor=Principal.system("urn:missionweave:service:registry"),
+            actor=Principal.system("urn:missionweaveprotocol:service:registry"),
             issued_at=datetime.now(UTC),
             payload=OpenAgentSessionPayload(agent_id=card.agent_id),
             signature="registry-signature",
@@ -334,7 +336,7 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     session_epoch = int(session.payload["sessionEpoch"])
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:add-usage-worker-role",
+            action_id="urn:missionweaveprotocol:action:add-usage-worker-role",
             kind=CommandKind.ADD_MEMBERSHIP,
             actor=Principal.agent(card.agent_id),
             group_id=GROUP_ID,
@@ -357,7 +359,7 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     )
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:create-usage-work",
+            action_id="urn:missionweaveprotocol:action:create-usage-work",
             kind=CommandKind.CREATE_WORK_ITEM,
             actor=Principal.agent(card.agent_id),
             group_id=GROUP_ID,
@@ -370,7 +372,7 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     )
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:offer-usage-work",
+            action_id="urn:missionweaveprotocol:action:offer-usage-work",
             kind=CommandKind.OFFER_WORK_ITEM,
             actor=Principal.agent(card.agent_id),
             group_id=GROUP_ID,
@@ -398,14 +400,14 @@ def _signed_work_command(
     issued_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     command: dict[str, Any] = {
         "protocolVersion": "0.1",
-        "actionId": f"urn:missionweave:action:usage:{action_number}",
+        "actionId": f"urn:missionweaveprotocol:action:usage:{action_number}",
         "actor": {"type": "agent", "id": identity.agent_id},
         "sessionEpoch": session_epoch,
         "membershipEpoch": 2,
         "groupId": GROUP_ID,
         "workItemId": WORK_ID,
         "kind": kind,
-        "correlationId": f"urn:missionweave:correlation:usage:{action_number}",
+        "correlationId": f"urn:missionweaveprotocol:correlation:usage:{action_number}",
         "issuedAt": issued_at,
         "payload": payload,
     }
@@ -428,9 +430,9 @@ async def _add_active_member(
     await _register_card(core, member)
     session = await core.perform(
         Command(
-            action_id="urn:missionweave:action:open-coordinator-session",
+            action_id="urn:missionweaveprotocol:action:open-coordinator-session",
             kind=CommandKind.OPEN_AGENT_SESSION,
-            actor=Principal.system("urn:missionweave:service:registry"),
+            actor=Principal.system("urn:missionweaveprotocol:service:registry"),
             issued_at=datetime.now(UTC),
             payload=OpenAgentSessionPayload(agent_id=coordinator.agent_id),
             signature="registry-signature",
@@ -438,7 +440,7 @@ async def _add_active_member(
     )
     await core.perform(
         Command(
-            action_id="urn:missionweave:action:add-late-member",
+            action_id="urn:missionweaveprotocol:action:add-late-member",
             kind=CommandKind.ADD_MEMBERSHIP,
             actor=Principal.agent(coordinator.agent_id),
             group_id=GROUP_ID,
@@ -469,7 +471,7 @@ def test_authenticated_session_multiplexes_command_event_and_replay() -> None:
             socket.send_text(
                 encode_frame(
                     SubscribeFrame(
-                        subscription_id="urn:missionweave:subscription:one",
+                        subscription_id="urn:missionweaveprotocol:subscription:one",
                         groups=(GroupCursor(group_id=GROUP_ID),),
                     )
                 )
@@ -495,14 +497,14 @@ def test_authenticated_session_multiplexes_command_event_and_replay() -> None:
             replay_socket.send_text(
                 encode_frame(
                     SubscribeFrame(
-                        subscription_id="urn:missionweave:subscription:two",
+                        subscription_id="urn:missionweaveprotocol:subscription:two",
                         groups=(GroupCursor(group_id=GROUP_ID),),
                     )
                 )
             )
             replayed = parse_frame(replay_socket.receive_text())
             assert isinstance(replayed, EventFrame)
-            assert replayed.event["eventId"] == "urn:missionweave:event:1"
+            assert replayed.event["eventId"] == "urn:missionweaveprotocol:event:1"
 
 
 def test_hello_rejects_an_unregistered_key_id() -> None:
@@ -516,7 +518,7 @@ def test_hello_rejects_an_unregistered_key_id() -> None:
             encode_frame(
                 HelloFrame(
                     agent_id=identity.agent_id,
-                    key_id="urn:missionweave:key:unregistered",
+                    key_id="urn:missionweaveprotocol:key:unregistered",
                     client_nonce="Y2xpZW50LW5vbmNl",
                 )
             )
@@ -542,7 +544,7 @@ def test_command_key_id_must_match_the_authenticated_key() -> None:
                         identity,
                         action_number=2,
                         session_epoch=welcome.session_epoch,
-                        signature_key_id="urn:missionweave:key:other",
+                        signature_key_id="urn:missionweaveprotocol:key:other",
                     )
                 )
             )
@@ -610,7 +612,7 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
         original_socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:real",
+                    subscription_id="urn:missionweaveprotocol:subscription:real",
                     groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
                 )
             )
@@ -671,7 +673,7 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
     authority_private_key, authority_public_key = generate_keypair()
-    authority_key_id = "urn:missionweave:key:usage-authority"
+    authority_key_id = "urn:missionweaveprotocol:key:usage-authority"
     adapter = CoreGatewayAdapter(
         core,
         keys,
@@ -696,7 +698,7 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:resource-usage",
+                    subscription_id="urn:missionweaveprotocol:subscription:resource-usage",
                     groups=(GroupCursor(group_id=GROUP_ID, after_sequence=4),),
                 )
             )
@@ -766,7 +768,9 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
         )
         usage_recorded = parse_frame(socket.receive_text())
         assert isinstance(usage_recorded, EventFrame)
-        assert usage_recorded.event["kind"] == "ext.missionweave.core.resource_usage_recorded"
+        assert (
+            usage_recorded.event["kind"] == "ext.missionweaveprotocol.core.resource_usage_recorded"
+        )
         assert usage_recorded.event["payload"]["usageDelta"]["modelTokens"] == 1
         assert usage_recorded.event["payload"]["remainingBudget"]["modelTokens"] == 0
         event_signature = usage_recorded.event["signature"]
@@ -868,7 +872,7 @@ def test_one_connection_multiplexes_groups_and_filters_replay_and_live_events() 
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:multiplexed",
+                    subscription_id="urn:missionweaveprotocol:subscription:multiplexed",
                     groups=(
                         GroupCursor(
                             group_id=GROUP_ID,
@@ -884,7 +888,7 @@ def test_one_connection_multiplexes_groups_and_filters_replay_and_live_events() 
         assert filtered_replay.event["kind"] == "message.posted"
         assert filtered_replay.event["cause"] == {
             "type": "command",
-            "id": "urn:missionweave:action:41",
+            "id": "urn:missionweaveprotocol:action:41",
         }
 
         for action_number, group_id, emitted_kind in (
@@ -916,7 +920,7 @@ def test_one_connection_multiplexes_groups_and_filters_replay_and_live_events() 
 
 def test_subscription_denies_non_member_without_disclosing_group_existence() -> None:
     coordinator_identity = AgentIdentity.generate(AGENT_ID)
-    intruder = AgentIdentity.generate("urn:missionweave:agent:intruder")
+    intruder = AgentIdentity.generate("urn:missionweaveprotocol:agent:intruder")
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
     for identity in (coordinator_identity, intruder):
@@ -941,7 +945,7 @@ def test_subscription_denies_non_member_without_disclosing_group_existence() -> 
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:unauthorized",
+                    subscription_id="urn:missionweaveprotocol:subscription:unauthorized",
                     groups=(GroupCursor(group_id=GROUP_ID),),
                 )
             )
@@ -955,7 +959,7 @@ def test_subscription_denies_non_member_without_disclosing_group_existence() -> 
 
 def test_late_member_replay_starts_after_membership_visibility_sequence() -> None:
     coordinator_identity = AgentIdentity.generate(AGENT_ID)
-    late_identity = AgentIdentity.generate("urn:missionweave:agent:late-worker")
+    late_identity = AgentIdentity.generate("urn:missionweaveprotocol:agent:late-worker")
     coordinator = _card(coordinator_identity)
     late_member = _card(late_identity)
     core = Core(InMemoryStore())
@@ -987,7 +991,7 @@ def test_late_member_replay_starts_after_membership_visibility_sequence() -> Non
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:late-member",
+                    subscription_id="urn:missionweaveprotocol:subscription:late-member",
                     groups=(GroupCursor(group_id=GROUP_ID, after_sequence=0),),
                 )
             )
@@ -1025,7 +1029,7 @@ def test_websocket_disconnect_reconnect_replays_only_after_durable_ack() -> None
             socket.send_text(
                 encode_frame(
                     SubscribeFrame(
-                        subscription_id="urn:missionweave:subscription:before-disconnect",
+                        subscription_id="urn:missionweaveprotocol:subscription:before-disconnect",
                         groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
                     )
                 )
@@ -1072,7 +1076,7 @@ def test_websocket_disconnect_reconnect_replays_only_after_durable_ack() -> None
             reconnected.send_text(
                 encode_frame(
                     SubscribeFrame(
-                        subscription_id="urn:missionweave:subscription:after-disconnect",
+                        subscription_id="urn:missionweaveprotocol:subscription:after-disconnect",
                         groups=(GroupCursor(group_id=GROUP_ID, after_sequence=0),),
                     )
                 )
@@ -1113,11 +1117,11 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
             "critical": False,
             "data": {
                 "kind": "mission.approved",
-                "actor": {"type": "human", "id": "urn:missionweave:human:forged"},
-                "groupId": "urn:missionweave:group:forged",
+                "actor": {"type": "human", "id": "urn:missionweaveprotocol:human:forged"},
+                "groupId": "urn:missionweaveprotocol:group:forged",
                 "sequence": 999,
                 "payload": {"forged": True},
-                "acceptedBy": {"type": "service", "id": "urn:missionweave:service:forged"},
+                "acceptedBy": {"type": "service", "id": "urn:missionweaveprotocol:service:forged"},
                 "signature": {"value": "forged"},
                 " opaque key ": "  preserve opaque whitespace  ",
             },
@@ -1145,7 +1149,7 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
     assert event["payload"]["message"]["content"] == "message 90"  # type: ignore[index]
     assert event["acceptedBy"] == {
         "type": "service",
-        "id": "urn:missionweave:service:group-gateway",
+        "id": "urn:missionweaveprotocol:service:group-gateway",
     }
     assert event["signature"] != {"value": "forged"}
     assert event["extensions"] == extensions
@@ -1194,7 +1198,7 @@ def test_unknown_critical_extension_returns_specific_wire_error() -> None:
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
-                    subscription_id="urn:missionweave:subscription:critical-extension",
+                    subscription_id="urn:missionweaveprotocol:subscription:critical-extension",
                     groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
                 )
             )

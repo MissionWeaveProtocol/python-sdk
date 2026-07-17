@@ -9,8 +9,8 @@ import pytest
 from jsonschema import ValidationError as JSONSchemaValidationError
 from pydantic import ValidationError as PydanticValidationError
 
-from missionweave.conformance import SchemaCatalog
-from missionweave.core import (
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.core import (
     AuthorizationDenied,
     Core,
     InvalidTransition,
@@ -20,8 +20,8 @@ from missionweave.core import (
     StaleCoordinatorEpoch,
     StaleMembershipEpoch,
 )
-from missionweave.crypto import generate_keypair
-from missionweave.models import (
+from missionweaveprotocol.crypto import generate_keypair
+from missionweaveprotocol.models import (
     ActorType,
     AddMembershipPayload,
     AgentCard,
@@ -55,8 +55,8 @@ from missionweave.models import (
     WorkItem,
     WorkItemStatus,
 )
-from missionweave.policy import CooperationLimits
-from missionweave.store import AuthoritativeStore, InMemoryStore, SQLiteStore
+from missionweaveprotocol.policy import CooperationLimits
+from missionweaveprotocol.store import AuthoritativeStore, InMemoryStore, SQLiteStore
 
 
 @dataclass
@@ -756,21 +756,21 @@ def test_delegation_budget_requires_currency_and_all_six_ceilings() -> None:
 
 def test_membership_schema_models_authoritative_work_delegate_grant() -> None:
     document = {
-        "membershipId": "urn:missionweave:membership:delegate",
-        "missionId": "urn:missionweave:mission:root",
-        "groupId": "urn:missionweave:group:root",
-        "member": {"type": "agent", "id": "urn:missionweave:agent:delegate"},
+        "membershipId": "urn:missionweaveprotocol:membership:delegate",
+        "missionId": "urn:missionweaveprotocol:mission:root",
+        "groupId": "urn:missionweaveprotocol:group:root",
+        "member": {"type": "agent", "id": "urn:missionweaveprotocol:agent:delegate"},
         "role": "work_delegate",
         "state": "active",
         "membershipEpoch": 3,
         "scopes": ["work.authorize", "work.offer"],
         "delegationGrants": [
             {
-                "grantId": "urn:missionweave:grant:scoped",
-                "granteeAgentId": "urn:missionweave:agent:delegate",
-                "missionId": "urn:missionweave:mission:root",
-                "groupId": "urn:missionweave:group:root",
-                "targetWorkItemId": "urn:missionweave:work:root",
+                "grantId": "urn:missionweaveprotocol:grant:scoped",
+                "granteeAgentId": "urn:missionweaveprotocol:agent:delegate",
+                "missionId": "urn:missionweaveprotocol:mission:root",
+                "groupId": "urn:missionweaveprotocol:group:root",
+                "targetWorkItemId": "urn:missionweaveprotocol:work:root",
                 "allowedCapabilities": [{"id": "software.python", "version": "2.0.0"}],
                 "budget": {
                     "currency": "USD",
@@ -784,7 +784,7 @@ def test_membership_schema_models_authoritative_work_delegate_grant() -> None:
                 "maxDescendantDepth": 2,
                 "granteeMembershipEpoch": 3,
                 "coordinatorEpoch": 4,
-                "grantedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+                "grantedBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
                 "grantedAt": "2026-07-15T08:00:00Z",
                 "expiresAt": "2026-07-15T09:00:00Z",
             }

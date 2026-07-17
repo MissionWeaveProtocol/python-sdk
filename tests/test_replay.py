@@ -5,31 +5,33 @@ from datetime import UTC, datetime
 
 import pytest
 
-from missionweave.local_store import SQLiteAgentStore
-from missionweave.models import Event, EventKind, Principal
-from missionweave.replay import (
+from missionweaveprotocol.local_store import SQLiteAgentStore
+from missionweaveprotocol.models import Event, EventKind, Principal
+from missionweaveprotocol.replay import (
     AgentReplay,
     EventProjection,
     ReplayGroupError,
     ReplaySequenceError,
 )
-from missionweave.scheduler import SchedulerPolicy, WorkOffer
+from missionweaveprotocol.scheduler import SchedulerPolicy, WorkOffer
 
 NOW = datetime(2026, 7, 16, tzinfo=UTC)
-AGENT_ID = "urn:missionweave:agent:worker"
-GROUP_A = "urn:missionweave:group:a"
-GROUP_B = "urn:missionweave:group:b"
+AGENT_ID = "urn:missionweaveprotocol:agent:worker"
+GROUP_A = "urn:missionweaveprotocol:group:a"
+GROUP_B = "urn:missionweaveprotocol:group:b"
 
 
 def _event(group_id: str, sequence: int, *, event_id: str | None = None) -> Event:
-    identifier = event_id or f"urn:missionweave:event:{group_id.rsplit(':', 1)[-1]}:{sequence}"
+    identifier = (
+        event_id or f"urn:missionweaveprotocol:event:{group_id.rsplit(':', 1)[-1]}:{sequence}"
+    )
     return Event(
         id=identifier,
         kind=EventKind.WORK_OFFER_ACCEPTED,
         group_id=group_id,
         sequence=sequence,
         actor=Principal.agent(AGENT_ID),
-        action_id=f"urn:missionweave:action:{identifier.rsplit(':', 1)[-1]}",
+        action_id=f"urn:missionweaveprotocol:action:{identifier.rsplit(':', 1)[-1]}",
         command_hash=f"hash:{identifier}",
         payload={"workItemId": f"work:{group_id.rsplit(':', 1)[-1]}:{sequence}"},
         occurred_at=NOW,
@@ -94,7 +96,7 @@ async def test_reconcile_projects_and_admits_before_advancing_and_deduplicates(t
 
 @pytest.mark.asyncio
 async def test_duplicate_event_id_cannot_move_to_another_sequence(tmp_path) -> None:
-    event_id = "urn:missionweave:event:shared"
+    event_id = "urn:missionweaveprotocol:event:shared"
     feed = ReplayFeed(
         {GROUP_A: [_event(GROUP_A, 1, event_id=event_id), _event(GROUP_A, 2, event_id=event_id)]}
     )

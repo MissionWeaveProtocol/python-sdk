@@ -6,8 +6,8 @@ import pytest
 from jsonschema import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 
-from missionweave.conformance import SchemaCatalog
-from missionweave.lease import ExecutionLease, LeaseState
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.lease import ExecutionLease, LeaseState
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 MAX_SAFE_INTEGER = 9_007_199_254_740_991

@@ -1,8 +1,8 @@
 {
-  "membershipId": "urn:missionweave:membership:developer-one-mission-one",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "member": {"type": "agent", "id": "urn:missionweave:agent:developer-one"},
+  "membershipId": "urn:missionweaveprotocol:membership:developer-one-mission-one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "member": {"type": "agent", "id": "urn:missionweaveprotocol:agent:developer-one"},
   "role": "worker",
   "state": "provisional",
   "membershipEpoch": 1,

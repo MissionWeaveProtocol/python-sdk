@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://missionweave.dev/schemas/0.1/mission.schema.json",
-  "title": "MissionWeave 0.1 Mission",
+  "$id": "https://missionweaveprotocol.dev/schemas/0.1/mission.schema.json",
+  "title": "MissionWeaveProtocol 0.1 Mission",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -2,17 +2,17 @@ from datetime import UTC, datetime
 
 import pytest
 
-from missionweave.agent import AgentRuntime
-from missionweave.context import (
+from missionweaveprotocol.agent import AgentRuntime
+from missionweaveprotocol.context import (
     ContextDecision,
     ContextPackageService,
     KnowledgePublisher,
     PolicyLogEntry,
     SnapshotArchive,
 )
-from missionweave.crypto import generate_keypair
-from missionweave.models import Event, EventKind, Principal
-from missionweave.scheduler import Dispatch, Scheduler
+from missionweaveprotocol.crypto import generate_keypair
+from missionweaveprotocol.models import Event, EventKind, Principal
+from missionweaveprotocol.scheduler import Dispatch, Scheduler
 
 NOW = datetime(2026, 7, 15, 8, 0, tzinfo=UTC)
 

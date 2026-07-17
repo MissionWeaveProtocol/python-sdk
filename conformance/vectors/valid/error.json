@@ -4,7 +4,7 @@
   "retryable": true,
   "fatal": false,
   "relatedActionId": "urn:uuid:00000000-0000-4000-8000-000000000001",
-  "groupId": "urn:missionweave:group:mission-one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "expectedRevision": 4,
   "currentRevision": 5,
   "occurredAt": "2026-07-15T00:00:02Z"

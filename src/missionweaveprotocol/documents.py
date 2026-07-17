@@ -1,8 +1,8 @@
 """Signed normative-document Adapter for reference Core projections.
 
-The classes in :mod:`missionweave.models` are intentionally compact, internal state projections.
-They are not wire documents and MUST NOT be serialized directly as normative MissionWeave durable
-objects.
+The classes in :mod:`missionweaveprotocol.models` are intentionally compact, internal state
+projections. They are not wire documents and MUST NOT be serialized directly as normative
+MissionWeaveProtocol durable objects.
 ``ProtocolDocumentAdapter`` is the explicit seam that supplies deployment metadata, joins
 related projections, normalizes identifiers, maps states, signs required documents, and validates
 the result against the normative JSON Schemas.
@@ -377,7 +377,7 @@ class ProtocolDocumentAdapter:
                     "deliverableId": f"deliverable-{index}",
                     "description": description,
                     "mediaType": "application/octet-stream",
-                    "schema": "urn:missionweave:schema:opaque",
+                    "schema": "urn:missionweaveprotocol:schema:opaque",
                 }
                 for index, description in enumerate(contract.deliverables, start=1)
             ],
@@ -486,7 +486,7 @@ class ProtocolDocumentAdapter:
             "uri": location.uri,
             "sizeBytes": location.size_bytes,
             "mediaType": artifact.media_type,
-            "schemaUri": artifact.schema_uri or "urn:missionweave:schema:opaque",
+            "schemaUri": artifact.schema_uri or "urn:missionweaveprotocol:schema:opaque",
             "producer": {
                 "agentId": self._id(artifact.producing_agent_id, "agent"),
                 "agentCardVersion": artifact.agent_card_version,
@@ -774,7 +774,7 @@ class ProtocolDocumentAdapter:
                 "workItemId": work.id,
             }
         ).removeprefix("sha256:")
-        return f"urn:missionweave:evidence:{fingerprint}"
+        return f"urn:missionweaveprotocol:evidence:{fingerprint}"
 
     @staticmethod
     def _evidence_artifact_hashes(evidence: Evidence) -> list[str]:
@@ -835,7 +835,7 @@ class ProtocolDocumentAdapter:
         if _ABSOLUTE_ID.fullmatch(value):
             return value
         fingerprint = canonical_hash(value).removeprefix("sha256:")
-        return f"urn:missionweave:{namespace}:{fingerprint}"
+        return f"urn:missionweaveprotocol:{namespace}:{fingerprint}"
 
     def _actor(self, principal: Principal) -> ProtocolDocument:
         actor_type = "service" if principal.type is ActorType.SYSTEM else principal.type.value
@@ -843,9 +843,9 @@ class ProtocolDocumentAdapter:
         return {"type": actor_type, "id": self._id(principal.id, namespace)}
 
     def _owner_actor(self, owner: str) -> ProtocolDocument:
-        if owner.startswith("human:") or owner.startswith("urn:missionweave:human:"):
+        if owner.startswith("human:") or owner.startswith("urn:missionweaveprotocol:human:"):
             return {"type": "human", "id": self._id(owner, "human")}
-        if owner.startswith("agent:") or owner.startswith("urn:missionweave:agent:"):
+        if owner.startswith("agent:") or owner.startswith("urn:missionweaveprotocol:agent:"):
             return {"type": "agent", "id": self._id(owner, "agent")}
         return {"type": "service", "id": self._id(owner, "service")}
 
@@ -863,7 +863,7 @@ class ProtocolDocumentAdapter:
         if re.fullmatch(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$", identifier):
             return identifier
         normalized = re.sub(r"[^a-z0-9]+", "-", identifier.lower()).strip("-") or "capability"
-        return f"missionweave.{normalized}"
+        return f"missionweaveprotocol.{normalized}"
 
     def _capability_requirement(
         self,
