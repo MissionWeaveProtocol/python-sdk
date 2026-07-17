@@ -1,15 +1,15 @@
 # MissionWeave Python SDK
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MissionWeaveProject/missionweaveprotocol/main/assets/brand/missionweave-icon.svg" width="160" alt="MissionWeave icon">
+  <img src="https://raw.githubusercontent.com/missionweaveprotocol/missionweaveprotocol/main/assets/brand/missionweave-icon.svg" width="160" alt="MissionWeave icon">
 </p>
 
 <p align="center">
-  <strong><a href="https://missionweaveproject.github.io/missionweaveprotocol.github.io/">Official website and documentation</a></strong>
+  <strong><a href="https://missionweaveprotocol.github.io/missionweaveprotocol.github.io/">Official website and documentation</a></strong>
 </p>
 
 The MissionWeave Python SDK is the official Python reference implementation of the
-[MissionWeave Protocol](https://github.com/MissionWeaveProject/missionweaveprotocol). It includes
+[MissionWeave Protocol](https://github.com/missionweaveprotocol/missionweaveprotocol). It includes
 the authoritative Core, Agent runtime, Worker Scheduler, Group gateway, storage adapters,
 conformance runner, and executable proof of concept.
 
@@ -190,4 +190,4 @@ The wheel includes `py.typed` and all 21 pinned schemas needed for runtime frame
 
 The Python SDK is licensed under [Apache-2.0](LICENSE). The normative specification
 and protocol artifacts live in the separate
-[missionweaveprotocol](https://github.com/MissionWeaveProject/missionweaveprotocol) repository.
+[missionweaveprotocol](https://github.com/missionweaveprotocol/missionweaveprotocol) repository.

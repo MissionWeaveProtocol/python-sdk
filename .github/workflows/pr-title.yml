@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   conventional-title:
-    uses: MissionWeaveProject/.github/.github/workflows/pr-title.yml@main
+    uses: missionweaveprotocol/.github/.github/workflows/pr-title.yml@main
