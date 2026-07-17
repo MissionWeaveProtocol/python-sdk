@@ -1,8 +1,8 @@
 {
-  "workItemId": "urn:missionweave:work-item:implementation",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "conversationId": "urn:missionweave:conversation:implementation",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "conversationId": "urn:missionweaveprotocol:conversation:implementation",
   "revision": 2,
   "state": "active",
   "exclusive": true,
@@ -14,7 +14,7 @@
         "deliverableId": "patch",
         "description": "Source patch.",
         "mediaType": "application/vnd.git.patch",
-        "schema": "urn:missionweave:schema:opaque"
+        "schema": "urn:missionweaveprotocol:schema:opaque"
       }
     ],
     "acceptanceCriteria": [
@@ -43,6 +43,6 @@
     "sideEffectRisk": "none",
     "executionApproval": "not_required"
   },
-  "createdBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "createdBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "createdAt": "2026-07-15T00:00:00Z"
 }

@@ -6,17 +6,17 @@ from pathlib import Path
 
 import pytest
 
-from missionweave.auth import AgentIdentity
-from missionweave.crypto import verify_canonical
-from missionweave.models import (
+from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.crypto import verify_canonical
+from missionweaveprotocol.models import (
     Command,
     CommandKind,
     ExtensionEnvelope,
     PostMessagePayload,
     Principal,
 )
-from missionweave.offline import OFFLINE_EXECUTION_EXTENSION
-from missionweave.poc import (
+from missionweaveprotocol.offline import OFFLINE_EXECUTION_EXTENSION
+from missionweaveprotocol.poc import (
     OfflinePolicyError,
     POCReport,
     offline_command_to_wire,

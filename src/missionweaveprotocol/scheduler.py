@@ -1,4 +1,4 @@
-"""Worker-local scheduling for MissionWeave Protocol WorkItems.
+"""Worker-local scheduling for MissionWeaveProtocol WorkItems.
 
 The Scheduler is deliberately a deep Module.  Its public Interface admits sanitized
 ``WorkOffer`` records, returns dispatch/preemption actions, accepts lifecycle transitions,

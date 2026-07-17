@@ -1,24 +1,24 @@
-# MissionWeave Python SDK
+# MissionWeaveProtocol Python SDK
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/missionweaveprotocol/missionweaveprotocol/main/assets/brand/missionweave-icon.svg" width="160" alt="MissionWeave icon">
+  <img src="https://raw.githubusercontent.com/missionweaveprotocol/missionweaveprotocol/main/assets/brand/missionweaveprotocol-icon.svg" width="160" alt="MissionWeaveProtocol icon">
 </p>
 
 <p align="center">
   <strong><a href="https://missionweaveprotocol.github.io/">Official website and documentation</a></strong>
 </p>
 
-The MissionWeave Python SDK is the official Python reference implementation of the
-[MissionWeave Protocol](https://github.com/missionweaveprotocol/missionweaveprotocol). It includes
+The MissionWeaveProtocol Python SDK is the official Python reference implementation of the
+[MissionWeaveProtocol](https://github.com/missionweaveprotocol/missionweaveprotocol). It includes
 the authoritative Core, Agent runtime, Worker Scheduler, Group gateway, storage adapters,
 conformance runner, and executable proof of concept.
 
-The current wire protocol is **MissionWeave Protocol 0.1**. The Python distribution and import
-package are both named `missionweave`; command-line entry points use the `missionweave-` prefix.
+The current wire protocol is **MissionWeaveProtocol 0.1**. The Python distribution and import
+package are both named `missionweaveprotocol`; command-line entry points use the `missionweaveprotocol-` prefix.
 
 ## Protocol compatibility
 
-| Python SDK | MissionWeave Protocol |
+| Python SDK | MissionWeaveProtocol |
 | --- | --- |
 | `0.1.x` | `0.1` |
 
@@ -58,7 +58,7 @@ uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
-uv run missionweave-conformance --root .
+uv run missionweaveprotocol-conformance --root .
 ```
 
 The conformance command validates all 43 vendored vectors against the 21 vendored Draft 2020-12
@@ -66,13 +66,13 @@ schemas with format checking. It exits non-zero on a validity mismatch. It can a
 separate protocol checkout or release bundle:
 
 ```bash
-uv run missionweave-conformance --root ../missionweaveprotocol
+uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
 ## Run the two-Mission POC
 
 ```bash
-uv run missionweave-demo --workdir .missionweave/poc
+uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 ```
 
 The command emits one canonical JSON report and exits non-zero if any required behavior is
@@ -91,7 +91,7 @@ classified knowledge publication, and signed archival snapshots. See [poc/README
 
 ```bash
 docker compose up -d --wait postgres
-MISSIONWEAVE_TEST_POSTGRES_URL=postgresql://missionweave:missionweave@127.0.0.1:55432/missionweave \
+MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL=postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol \
   uv run pytest tests/test_core.py -q
 ```
 
@@ -104,21 +104,21 @@ Create disposable local keys and an Organization-signed registry:
 
 ```bash
 uv run python examples/create_dev_registry.py
-export MISSIONWEAVE_ORGANIZATION_PUBLIC_KEY="$(uv run python -c \
-  'import json; print(json.load(open(".missionweave/dev-keys.json"))["organizationPublicKey"])')"
-export MISSIONWEAVE_AUTHORITY_PRIVATE_KEY="$(uv run python -c \
-  'import json; print(json.load(open(".missionweave/dev-keys.json"))["authorityPrivateKey"])')"
-export MISSIONWEAVE_SESSION_SECRET='development-only-session-secret-32-bytes'
+export MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY="$(uv run python -c \
+  'import json; print(json.load(open(".missionweaveprotocol/dev-keys.json"))["organizationPublicKey"])')"
+export MISSIONWEAVEPROTOCOL_AUTHORITY_PRIVATE_KEY="$(uv run python -c \
+  'import json; print(json.load(open(".missionweaveprotocol/dev-keys.json"))["authorityPrivateKey"])')"
+export MISSIONWEAVEPROTOCOL_SESSION_SECRET='development-only-session-secret-32-bytes'
 
-uv run missionweave-server \
-  --registry .missionweave/dev-registry.json \
-  --database-url postgresql://missionweave:missionweave@127.0.0.1:55432/missionweave \
-  --organization-public-key "$MISSIONWEAVE_ORGANIZATION_PUBLIC_KEY" \
+uv run missionweaveprotocol-server \
+  --registry .missionweaveprotocol/dev-registry.json \
+  --database-url postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol \
+  --organization-public-key "$MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY" \
   --allow-insecure
 ```
 
 `--allow-insecure` is only for loopback development. A deployment must omit it and provide
-`--tls-certfile` plus `--tls-keyfile`; MissionWeave 0.1 requires `wss` over TLS 1.3. One authenticated
+`--tls-certfile` plus `--tls-keyfile`; MissionWeaveProtocol 0.1 requires `wss` over TLS 1.3. One authenticated
 connection multiplexes many Group subscriptions. The gateway schema-validates frames, rejects
 duplicate JSON members, verifies Agent Command signatures and Session/Membership epochs, enforces
 Membership visibility and attention filters, signs Events, and replays after acknowledged Cursors.
@@ -133,20 +133,20 @@ transport details.
 import asyncio
 from datetime import UTC, datetime, timedelta
 
-from missionweave.control import HumanControl, HumanIdentity
-from missionweave.core import Core
-from missionweave.store import PostgreSQLStore
+from missionweaveprotocol.control import HumanControl, HumanIdentity
+from missionweaveprotocol.core import Core
+from missionweaveprotocol.store import PostgreSQLStore
 
 
 async def main() -> None:
-    store = PostgreSQLStore("postgresql://missionweave:missionweave@127.0.0.1:55432/missionweave")
+    store = PostgreSQLStore("postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol")
     await store.initialize()
     try:
         control = HumanControl(Core(store), HumanIdentity.generate("human:mission-owner"))
         receipt = await control.create(
             mission_id="mission:release",
             group_id="group:release",
-            coordinator_id="urn:missionweave:agent:developer",
+            coordinator_id="urn:missionweaveprotocol:agent:developer",
             title="Ship release",
             objective="Produce and verify the release",
             definition_of_done=("tests pass", "human approves"),

@@ -1,19 +1,19 @@
 {
   "protocolVersion": "0.1",
   "actionId": "urn:uuid:00000000-0000-4000-8000-000000000001",
-  "actor": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "sessionEpoch": 7,
   "membershipEpoch": 3,
-  "groupId": "urn:missionweave:group:mission-one",
-  "conversationId": "urn:missionweave:conversation:planning",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "conversationId": "urn:missionweaveprotocol:conversation:planning",
   "kind": "message.post",
   "expectedRevision": 4,
   "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000099",
   "issuedAt": "2026-07-15T00:00:00Z",
-  "payload": {"messageId": "urn:missionweave:message:one", "authority": false},
+  "payload": {"messageId": "urn:missionweaveprotocol:message:one", "authority": false},
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:coordinator",
+    "keyId": "urn:missionweaveprotocol:key:coordinator",
     "createdAt": "2026-07-15T00:00:00Z",
     "value": "c2lnbmF0dXJl"
   }

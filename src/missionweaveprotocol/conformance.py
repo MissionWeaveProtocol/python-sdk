@@ -63,7 +63,7 @@ def default_schema_root() -> Path:
     checkout = Path(__file__).resolve().parents[2] / "schemas"
     if checkout.is_dir():
         return checkout
-    raise FileNotFoundError("MissionWeave normative schemas are not installed")
+    raise FileNotFoundError("MissionWeaveProtocol normative schemas are not installed")
 
 
 class SchemaCatalog:

@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from missionweave.conformance import SchemaCatalog
-from missionweave.core import Core, LeaseExpired
-from missionweave.lease import ExecutionLease, LeaseState
-from missionweave.models import (
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.core import Core, LeaseExpired
+from missionweaveprotocol.lease import ExecutionLease, LeaseState
+from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
     Artifact,
     BlockWorkItemPayload,
@@ -32,7 +32,7 @@ from missionweave.models import (
     WorkItem,
     WorkItemStatus,
 )
-from missionweave.store import AuthoritativeStore, InMemoryStore, SQLiteStore
+from missionweaveprotocol.store import AuthoritativeStore, InMemoryStore, SQLiteStore
 from tests.test_core import MutableClock, Scenario
 
 COORDINATOR_ID = "agent:coordinator"

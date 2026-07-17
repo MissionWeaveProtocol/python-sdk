@@ -1,8 +1,8 @@
 {
-  "workItemId": "urn:missionweave:work-item:implementation",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "conversationId": "urn:missionweave:conversation:implementation",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "conversationId": "urn:missionweaveprotocol:conversation:implementation",
   "revision": 3,
   "state": "queued",
   "exclusive": true,
@@ -14,7 +14,7 @@
         "deliverableId": "source-change",
         "description": "Reviewed source and test changes.",
         "mediaType": "application/vnd.git.patch",
-        "schema": "urn:missionweave:schema:opaque"
+        "schema": "urn:missionweaveprotocol:schema:opaque"
       }
     ],
     "acceptanceCriteria": [
@@ -25,9 +25,9 @@
       }
     ],
     "inputArtifacts": [],
-    "dependencyWorkItemIds": ["urn:missionweave:work-item:requirements"],
+    "dependencyWorkItemIds": ["urn:missionweaveprotocol:work-item:requirements"],
     "allowedResources": [
-      {"resource": "urn:missionweave:resource:repository", "operations": ["read", "write:branch"]}
+      {"resource": "urn:missionweaveprotocol:resource:repository", "operations": ["read", "write:branch"]}
     ],
     "requiredCapabilities": [
       {"id": "acme.software.python-implementation", "version": "2.1.0"}
@@ -47,21 +47,21 @@
   },
   "offers": [
     {
-      "offerId": "urn:missionweave:offer:implementation-developer-one",
-      "agentId": "urn:missionweave:agent:developer-one",
+      "offerId": "urn:missionweaveprotocol:offer:implementation-developer-one",
+      "agentId": "urn:missionweaveprotocol:agent:developer-one",
       "agentCardVersion": 3,
       "expiresAt": "2026-07-15T01:00:00Z",
       "status": "accepted"
     }
   ],
   "owner": {
-    "agentId": "urn:missionweave:agent:developer-one",
+    "agentId": "urn:missionweaveprotocol:agent:developer-one",
     "agentCardVersion": 3,
     "capabilityPins": [
       {"id": "acme.software.python-implementation", "version": "2.1.0"}
     ],
     "ownershipEpoch": 2,
-    "ownershipLeaseId": "urn:missionweave:lease:ownership-two",
+    "ownershipLeaseId": "urn:missionweaveprotocol:lease:ownership-two",
     "acceptedAt": "2026-07-15T00:15:00Z"
   },
   "selectionBasis": {
@@ -74,7 +74,7 @@
     "authorizationEligible": true,
     "availabilityEstimate": "2026-07-15T00:30:00Z",
     "expectedCost": 18.5,
-    "reliabilityEvidence": ["urn:missionweave:performance:developer-one-python"],
+    "reliabilityEvidence": ["urn:missionweaveprotocol:performance:developer-one-python"],
     "policyRulesApplied": ["eligible-capability-v2", "within-mission-budget"]
   },
   "scheduleEstimate": {
@@ -84,8 +84,8 @@
     "capacityStatus": "queued",
     "lastCalculatedAt": "2026-07-15T00:15:00Z"
   },
-  "createdBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
-  "authorizedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "createdBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
+  "authorizedBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "createdAt": "2026-07-15T00:10:00Z",
   "updatedAt": "2026-07-15T00:15:00Z"
 }

@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.agent import ActiveSessionError, AgentRuntime, StaleSessionEpochError
-from missionweave.scheduler import (
+from missionweaveprotocol.agent import ActiveSessionError, AgentRuntime, StaleSessionEpochError
+from missionweaveprotocol.scheduler import (
     AdmissionReason,
     CheckpointRef,
     Dispatch,

@@ -6,7 +6,7 @@
       "deliverableId": "source-change",
       "description": "Reviewed source and test changes.",
       "mediaType": "application/vnd.git.patch",
-      "schema": "urn:missionweave:schema:opaque"
+      "schema": "urn:missionweaveprotocol:schema:opaque"
     }
   ],
   "acceptanceCriteria": [
@@ -17,9 +17,9 @@
     }
   ],
   "inputArtifacts": ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
-  "dependencyWorkItemIds": ["urn:missionweave:work-item:requirements"],
+  "dependencyWorkItemIds": ["urn:missionweaveprotocol:work-item:requirements"],
   "allowedResources": [
-    {"resource": "urn:missionweave:resource:repository", "operations": ["read", "write:branch"]}
+    {"resource": "urn:missionweaveprotocol:resource:repository", "operations": ["read", "write:branch"]}
   ],
   "requiredCapabilities": [
     {"id": "acme.software.python-implementation", "version": "2.1.0"}

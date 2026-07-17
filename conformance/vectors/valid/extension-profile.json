@@ -1,8 +1,8 @@
 {
-  "profileUri": "urn:missionweave:profile:acme-security-review",
+  "profileUri": "urn:missionweaveprotocol:profile:acme-security-review",
   "name": "Acme Security Review",
   "version": "1.0.0",
-  "schemaUri": "https://schemas.acme.example/missionweave/security-review-1.json",
+  "schemaUri": "https://schemas.acme.example/missionweaveprotocol/security-review-1.json",
   "schemaHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "requiredCapabilities": [
     {"id": "acme.security.application-review", "version": "1.0.0"}
@@ -11,11 +11,11 @@
   "commandKinds": ["ext.acme.security_review.request"],
   "eventKinds": ["ext.acme.security_review.completed"],
   "overridesCoreInvariants": false,
-  "approvedBy": {"type": "human", "id": "urn:missionweave:human:security-owner"},
+  "approvedBy": {"type": "human", "id": "urn:missionweaveprotocol:human:security-owner"},
   "approvedAt": "2026-07-01T00:00:00Z",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:organization-registry",
+    "keyId": "urn:missionweaveprotocol:key:organization-registry",
     "createdAt": "2026-07-01T00:00:00Z",
     "value": "c2lnbmF0dXJl"
   }

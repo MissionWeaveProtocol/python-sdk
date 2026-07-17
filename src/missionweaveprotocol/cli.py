@@ -1,4 +1,4 @@
-"""Console entry points for the MissionWeave reference implementation."""
+"""Console entry points for the MissionWeaveProtocol reference implementation."""
 
 from __future__ import annotations
 
@@ -159,7 +159,7 @@ def create_gateway_app(
     database_url: str,
     agent_cards: Sequence[AgentCard],
     session_secret: bytes | None = None,
-    authority_key_id: str = "urn:missionweave:key:group-gateway",
+    authority_key_id: str = "urn:missionweaveprotocol:key:group-gateway",
     authority_private_key: str | None = None,
 ) -> FastAPI:
     """Compose the runnable gateway from typed adapters and one trusted Registry snapshot."""
@@ -199,7 +199,7 @@ def create_gateway_app(
         finally:
             await store.close()
 
-    app = FastAPI(title="MissionWeave Group Gateway", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="MissionWeaveProtocol Group Gateway", version="0.1.0", lifespan=lifespan)
     GroupGateway(adapter, sessions, app=app)
     return app
 
@@ -219,7 +219,7 @@ def _server_command(
         Path,
         typer.Option(
             "--registry",
-            envvar="MISSIONWEAVE_AGENT_REGISTRY",
+            envvar="MISSIONWEAVEPROTOCOL_AGENT_REGISTRY",
             exists=True,
             dir_okay=False,
             readable=True,
@@ -228,25 +228,25 @@ def _server_command(
     ],
     database_url: Annotated[
         str,
-        typer.Option("--database-url", envvar="MISSIONWEAVE_DATABASE_URL"),
-    ] = "sqlite+aiosqlite:///./missionweave.db",
-    host: Annotated[str, typer.Option("--host", envvar="MISSIONWEAVE_HOST")] = "127.0.0.1",
+        typer.Option("--database-url", envvar="MISSIONWEAVEPROTOCOL_DATABASE_URL"),
+    ] = "sqlite+aiosqlite:///./missionweaveprotocol.db",
+    host: Annotated[str, typer.Option("--host", envvar="MISSIONWEAVEPROTOCOL_HOST")] = "127.0.0.1",
     port: Annotated[
-        int, typer.Option("--port", envvar="MISSIONWEAVE_PORT", min=1, max=65535)
+        int, typer.Option("--port", envvar="MISSIONWEAVEPROTOCOL_PORT", min=1, max=65535)
     ] = 8765,
     session_secret: Annotated[
         str | None,
-        typer.Option("--session-secret", envvar="MISSIONWEAVE_SESSION_SECRET", hidden=True),
+        typer.Option("--session-secret", envvar="MISSIONWEAVEPROTOCOL_SESSION_SECRET", hidden=True),
     ] = None,
     authority_key_id: Annotated[
         str,
-        typer.Option("--authority-key-id", envvar="MISSIONWEAVE_AUTHORITY_KEY_ID"),
-    ] = "urn:missionweave:key:group-gateway",
+        typer.Option("--authority-key-id", envvar="MISSIONWEAVEPROTOCOL_AUTHORITY_KEY_ID"),
+    ] = "urn:missionweaveprotocol:key:group-gateway",
     authority_private_key: Annotated[
         str | None,
         typer.Option(
             "--authority-private-key",
-            envvar="MISSIONWEAVE_AUTHORITY_PRIVATE_KEY",
+            envvar="MISSIONWEAVEPROTOCOL_AUTHORITY_PRIVATE_KEY",
             hidden=True,
         ),
     ] = None,
@@ -254,23 +254,25 @@ def _server_command(
         str | None,
         typer.Option(
             "--organization-public-key",
-            envvar="MISSIONWEAVE_ORGANIZATION_PUBLIC_KEY",
+            envvar="MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY",
             help="Ed25519 trust-root key used to verify every Agent Card.",
         ),
     ] = None,
     tls_certfile: Annotated[
         Path | None,
-        typer.Option("--tls-certfile", envvar="MISSIONWEAVE_TLS_CERTFILE", dir_okay=False),
+        typer.Option("--tls-certfile", envvar="MISSIONWEAVEPROTOCOL_TLS_CERTFILE", dir_okay=False),
     ] = None,
     tls_keyfile: Annotated[
         Path | None,
-        typer.Option("--tls-keyfile", envvar="MISSIONWEAVE_TLS_KEYFILE", dir_okay=False),
+        typer.Option("--tls-keyfile", envvar="MISSIONWEAVEPROTOCOL_TLS_KEYFILE", dir_okay=False),
     ] = None,
     allow_insecure: Annotated[
         bool,
         typer.Option(
             "--allow-insecure",
-            help="Permit ws:// for local development; MissionWeave deployments require TLS.",
+            help=(
+                "Permit ws:// for local development; MissionWeaveProtocol deployments require TLS."
+            ),
         ),
     ] = False,
 ) -> None:
@@ -278,7 +280,8 @@ def _server_command(
         raise typer.BadParameter("TLS certificate and key must be supplied together")
     if tls_certfile is None and not allow_insecure:
         raise typer.BadParameter(
-            "MissionWeave requires TLS; supply --tls-certfile and --tls-keyfile or explicitly use "
+            "MissionWeaveProtocol requires TLS; supply --tls-certfile and --tls-keyfile or "
+            "explicitly use "
             "--allow-insecure for local development"
         )
     if authority_private_key is None and not allow_insecure:
@@ -319,14 +322,14 @@ def _server_command(
 
 def _resolve_poc_runner() -> POCRunner:
     try:
-        module = import_module("missionweave.poc")
+        module = import_module("missionweaveprotocol.poc")
     except ModuleNotFoundError as error:
-        if error.name != "missionweave.poc":
+        if error.name != "missionweaveprotocol.poc":
             raise
-        raise RuntimeError("the MissionWeave POC runner is not installed") from error
+        raise RuntimeError("the MissionWeaveProtocol POC runner is not installed") from error
     candidate = getattr(module, "run_poc_sync", None)
     if not callable(candidate):
-        raise RuntimeError("missionweave.poc does not expose run_poc_sync")
+        raise RuntimeError("missionweaveprotocol.poc does not expose run_poc_sync")
     return cast(POCRunner, candidate)
 
 
@@ -362,7 +365,9 @@ def _print_conformance(report: ConformanceReport) -> None:
 def _conformance_command(
     root: Annotated[
         Path,
-        typer.Option("--root", exists=True, file_okay=False, help="MissionWeave repository root."),
+        typer.Option(
+            "--root", exists=True, file_okay=False, help="MissionWeaveProtocol repository root."
+        ),
     ] = Path("."),
     manifest: Annotated[
         Path | None,
@@ -382,16 +387,16 @@ def _conformance_command(
 def server() -> None:
     """Run the authenticated WebSocket Group gateway."""
 
-    server_app(prog_name="missionweave-server")
+    server_app(prog_name="missionweaveprotocol-server")
 
 
 def demo() -> None:
-    """Run the executable MissionWeave proof of concept."""
+    """Run the executable MissionWeaveProtocol proof of concept."""
 
-    demo_app(prog_name="missionweave-demo")
+    demo_app(prog_name="missionweaveprotocol-demo")
 
 
 def conformance() -> None:
     """Run the implementation-neutral conformance vectors."""
 
-    conformance_app(prog_name="missionweave-conformance")
+    conformance_app(prog_name="missionweaveprotocol-conformance")

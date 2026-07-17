@@ -1,10 +1,10 @@
 {
   "protocolVersion": "0.1",
   "actionId": "urn:uuid:10000000-0000-4000-8000-000000000001",
-  "actor": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "sessionEpoch": 7,
   "membershipEpoch": 3,
-  "groupId": "urn:missionweave:group:mission-one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "kind": "mission.cancel",
   "correlationId": "urn:uuid:10000000-0000-4000-8000-000000000099",
   "issuedAt": "2026-07-15T00:00:00Z",

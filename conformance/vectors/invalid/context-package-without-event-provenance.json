@@ -1,19 +1,19 @@
 {
-  "contextPackageId": "urn:missionweave:context-package:invalid",
+  "contextPackageId": "urn:missionweaveprotocol:context-package:invalid",
   "version": 1,
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "sourceEventRange": {"fromSequence": 1, "toSequence": 35, "eventIds": []},
   "artifactHashes": [],
   "summary": "An untraceable summary.",
   "decisions": [],
   "constraints": [],
   "unresolvedQuestions": [],
-  "generatedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "generatedBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "generatedAt": "2026-07-15T00:10:00Z",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:coordinator",
+    "keyId": "urn:missionweaveprotocol:key:coordinator",
     "createdAt": "2026-07-15T00:10:00Z",
     "value": "c2lnbmF0dXJl"
   }

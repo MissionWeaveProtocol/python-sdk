@@ -10,10 +10,10 @@ from typing import Any, cast
 import asyncpg  # type: ignore[import-untyped]
 import pytest
 
-from missionweave.canonical import canonical_hash, canonical_json
-from missionweave.context import PolicyLogEntry, SnapshotArchive
-from missionweave.control import HumanControl, HumanIdentity
-from missionweave.core import (
+from missionweaveprotocol.canonical import canonical_hash, canonical_json
+from missionweaveprotocol.context import PolicyLogEntry, SnapshotArchive
+from missionweaveprotocol.control import HumanControl, HumanIdentity
+from missionweaveprotocol.core import (
     ActionIdCollision,
     AlreadyExists,
     AuthorizationDenied,
@@ -27,9 +27,9 @@ from missionweave.core import (
     StaleOwnershipEpoch,
     StaleSessionEpoch,
 )
-from missionweave.crypto import generate_keypair, sign_canonical, verify_canonical
-from missionweave.lease import ExecutionLease
-from missionweave.models import (
+from missionweaveprotocol.crypto import generate_keypair, sign_canonical, verify_canonical
+from missionweaveprotocol.lease import ExecutionLease
+from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
     ActorType,
     AddMembershipPayload,
@@ -88,8 +88,17 @@ from missionweave.models import (
     WorkProposal,
     WorkProposalStatus,
 )
-from missionweave.policy import AuthorizationService, CooperationLimits, ExecutionAuthorization
-from missionweave.store import AuthoritativeStore, InMemoryStore, PostgreSQLStore, SQLiteStore
+from missionweaveprotocol.policy import (
+    AuthorizationService,
+    CooperationLimits,
+    ExecutionAuthorization,
+)
+from missionweaveprotocol.store import (
+    AuthoritativeStore,
+    InMemoryStore,
+    PostgreSQLStore,
+    SQLiteStore,
+)
 
 
 @dataclass
@@ -2175,7 +2184,7 @@ async def test_group_archive_rejects_double_archival(
 
 @pytest.mark.asyncio
 async def test_sqlite_store_persists_authoritative_state_and_replay(tmp_path: Path) -> None:
-    path = tmp_path / "missionweave.sqlite3"
+    path = tmp_path / "missionweaveprotocol.sqlite3"
     clock = MutableClock(datetime(2026, 7, 15, 8, 0, tzinfo=UTC))
     first_store = SQLiteStore(path)
     first = Scenario(Core(first_store, clock=clock), clock)
@@ -2198,7 +2207,7 @@ async def test_sqlite_store_persists_authoritative_state_and_replay(tmp_path: Pa
 async def test_sqlite_restart_preserves_archived_group_and_complete_snapshot(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "missionweave-archive.sqlite3"
+    path = tmp_path / "missionweaveprotocol-archive.sqlite3"
     first_store = SQLiteStore(path)
     ready = await _archive_ready_scenario(first_store)
     await ready.scenario.core.perform(
@@ -2238,13 +2247,14 @@ async def test_sqlite_restart_preserves_archived_group_and_complete_snapshot(
 
 @pytest.mark.asyncio
 async def test_postgresql_store_persists_state_and_replay_when_test_database_is_available() -> None:
-    url = os.getenv("MISSIONWEAVE_TEST_POSTGRES_URL")
+    url = os.getenv("MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL")
     if not url:
         pytest.skip(
-            "set MISSIONWEAVE_TEST_POSTGRES_URL to run the PostgreSQL Store integration test"
+            "set MISSIONWEAVEPROTOCOL_TEST_POSTGRES_URL to run the PostgreSQL Store "
+            "integration test"
         )
     connection = await asyncpg.connect(url)
-    await connection.execute("DROP TABLE IF EXISTS missionweave_authoritative_state")
+    await connection.execute("DROP TABLE IF EXISTS missionweaveprotocol_authoritative_state")
     await connection.close()
 
     first_store = PostgreSQLStore(url)
@@ -2287,8 +2297,8 @@ async def test_postgresql_store_persists_state_and_replay_when_test_database_is_
 
 
 def test_canonical_hashing_and_ed25519_signatures_are_stable() -> None:
-    left = {"z": 2, "a": {"name": "MissionWeave", "enabled": True}}
-    right = {"a": {"enabled": True, "name": "MissionWeave"}, "z": 2}
+    left = {"z": 2, "a": {"name": "MissionWeaveProtocol", "enabled": True}}
+    right = {"a": {"enabled": True, "name": "MissionWeaveProtocol"}, "z": 2}
     private_key, public_key = generate_keypair()
 
     assert canonical_json(left) == canonical_json(right)

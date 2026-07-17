@@ -117,9 +117,10 @@ class InMemoryStore:
 class SQLStore:
     """Portable authoritative Store facade backed by SQLite or PostgreSQL.
 
-    MissionWeave 0.1 prioritizes correct transition serialization over storage layout. A single
-    typed document keeps the seam small while an optimistic ``revision`` column fences concurrent
-    writers. The representation can later be normalized without changing ``Core`` or callers.
+    MissionWeaveProtocol 0.1 prioritizes correct transition serialization over storage layout. A
+    single typed document keeps the seam small while an optimistic ``revision`` column fences
+    concurrent writers. The representation can later be normalized without changing ``Core`` or
+    callers.
     """
 
     def __init__(self, url: str, *, echo: bool = False) -> None:
@@ -190,7 +191,7 @@ class _SQLiteBackend:
             connection = await aiosqlite.connect(self._path)
             await connection.execute(
                 """
-                CREATE TABLE IF NOT EXISTS missionweave_authoritative_state (
+                CREATE TABLE IF NOT EXISTS missionweaveprotocol_authoritative_state (
                     singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
                     revision INTEGER NOT NULL,
                     document TEXT NOT NULL
@@ -199,7 +200,7 @@ class _SQLiteBackend:
             )
             await connection.execute(
                 """
-                INSERT OR IGNORE INTO missionweave_authoritative_state(
+                INSERT OR IGNORE INTO missionweaveprotocol_authoritative_state(
                     singleton_id, revision, document
                 )
                 VALUES (1, 0, ?)
@@ -217,7 +218,7 @@ class _SQLiteBackend:
             try:
                 cursor = await connection.execute(
                     "SELECT revision, document "
-                    "FROM missionweave_authoritative_state "
+                    "FROM missionweaveprotocol_authoritative_state "
                     "WHERE singleton_id = 1"
                 )
                 row = await cursor.fetchone()
@@ -229,7 +230,7 @@ class _SQLiteBackend:
                 result = operation(state)
                 cursor = await connection.execute(
                     """
-                    UPDATE missionweave_authoritative_state
+                    UPDATE missionweaveprotocol_authoritative_state
                     SET revision = ?, document = ?
                     WHERE singleton_id = 1 AND revision = ?
                     """,
@@ -249,7 +250,8 @@ class _SQLiteBackend:
         connection = cast_connection(self._connection)
         async with self._operation_lock:
             cursor = await connection.execute(
-                "SELECT document FROM missionweave_authoritative_state WHERE singleton_id = 1"
+                "SELECT document FROM missionweaveprotocol_authoritative_state "
+                "WHERE singleton_id = 1"
             )
             row = await cursor.fetchone()
             await cursor.close()
@@ -286,7 +288,7 @@ class _PostgreSQLBackend:
             async with pool.acquire() as connection:
                 await connection.execute(
                     """
-                    CREATE TABLE IF NOT EXISTS missionweave_authoritative_state (
+                    CREATE TABLE IF NOT EXISTS missionweaveprotocol_authoritative_state (
                         singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
                         revision BIGINT NOT NULL,
                         document TEXT NOT NULL
@@ -295,7 +297,9 @@ class _PostgreSQLBackend:
                 )
                 await connection.execute(
                     """
-                    INSERT INTO missionweave_authoritative_state(singleton_id, revision, document)
+                    INSERT INTO missionweaveprotocol_authoritative_state(
+                        singleton_id, revision, document
+                    )
                     VALUES (1, 0, $1)
                     ON CONFLICT (singleton_id) DO NOTHING
                     """,
@@ -309,7 +313,7 @@ class _PostgreSQLBackend:
         async with pool.acquire() as connection, connection.transaction():
             row = await connection.fetchrow(
                 """
-                SELECT revision, document FROM missionweave_authoritative_state
+                SELECT revision, document FROM missionweaveprotocol_authoritative_state
                 WHERE singleton_id = 1 FOR UPDATE
                 """
             )
@@ -320,7 +324,7 @@ class _PostgreSQLBackend:
             result = operation(state)
             status = await connection.execute(
                 """
-                UPDATE missionweave_authoritative_state
+                UPDATE missionweaveprotocol_authoritative_state
                 SET revision = $1, document = $2
                 WHERE singleton_id = 1 AND revision = $3
                 """,
@@ -337,7 +341,8 @@ class _PostgreSQLBackend:
         pool = cast_pool(self._pool)
         async with pool.acquire() as connection:
             document = await connection.fetchval(
-                "SELECT document FROM missionweave_authoritative_state WHERE singleton_id = 1"
+                "SELECT document FROM missionweaveprotocol_authoritative_state "
+                "WHERE singleton_id = 1"
             )
         if document is None:
             raise RuntimeError("authoritative state row is missing")

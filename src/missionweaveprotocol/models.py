@@ -1,4 +1,4 @@
-"""Typed domain and wire models for the MissionWeave authoritative core.
+"""Typed domain and wire models for the MissionWeaveProtocol authoritative core.
 
 The models in this module deliberately contain no transport or persistence behavior.  They are
 the stable vocabulary shared by the core Module, Store adapters, and protocol bindings.
@@ -122,8 +122,8 @@ class CooperationPolicyName(StrEnum):
 
 
 class CommandKind(StrEnum):
-    REGISTER_AGENT_CARD = "ext.missionweave.registry.agent_card_register"
-    OPEN_AGENT_SESSION = "ext.missionweave.identity.session_open"
+    REGISTER_AGENT_CARD = "ext.missionweaveprotocol.registry.agent_card_register"
+    OPEN_AGENT_SESSION = "ext.missionweaveprotocol.identity.session_open"
     CREATE_MISSION = "mission.create"
     CREATE_FOLLOW_UP_MISSION = "mission.create_follow_up"
     CREATE_CHILD_MISSION = "mission.create_child"
@@ -138,12 +138,12 @@ class CommandKind(StrEnum):
     REDACT_MESSAGE = "message.redact"
     PROPOSE_WORK_ITEM = "work.propose"
     CREATE_WORK_ITEM = "work.authorize"
-    ADD_WORK_ITEM_DEPENDENCY = "ext.missionweave.core.work_dependency_add"
+    ADD_WORK_ITEM_DEPENDENCY = "ext.missionweaveprotocol.core.work_dependency_add"
     OFFER_WORK_ITEM = "work.offer"
     ACCEPT_WORK_OFFER = "work.accept_offer"
     START_WORK_ITEM = "work.start"
-    RENEW_EXECUTION_LEASE = "ext.missionweave.core.work_execution_lease_renew"
-    RECORD_RESOURCE_USAGE = "ext.missionweave.core.resource_usage_record"
+    RENEW_EXECUTION_LEASE = "ext.missionweaveprotocol.core.work_execution_lease_renew"
+    RECORD_RESOURCE_USAGE = "ext.missionweaveprotocol.core.resource_usage_record"
     CHECKPOINT_WORK_ITEM = "work.checkpoint"
     BLOCK_WORK_ITEM = "work.block"
     UNBLOCK_WORK_ITEM = "work.unblock"
@@ -159,12 +159,12 @@ class CommandKind(StrEnum):
     REQUEST_MISSION_CHANGES = "mission.request_changes"
     FAIL_MISSION = "mission.terminate"
     CANCEL_MISSION = "mission.cancel"
-    ARCHIVE_GROUP = "ext.missionweave.core.group_archive"
+    ARCHIVE_GROUP = "ext.missionweaveprotocol.core.group_archive"
 
 
 class EventKind(StrEnum):
-    AGENT_CARD_REGISTERED = "ext.missionweave.registry.agent_card_registered"
-    AGENT_SESSION_OPENED = "ext.missionweave.identity.session_opened"
+    AGENT_CARD_REGISTERED = "ext.missionweaveprotocol.registry.agent_card_registered"
+    AGENT_SESSION_OPENED = "ext.missionweaveprotocol.identity.session_opened"
     MISSION_CREATED = "mission.created"
     FOLLOW_UP_MISSION_CREATED = "mission.follow_up.created"
     CHILD_MISSION_CREATED = "mission.child.created"
@@ -191,8 +191,8 @@ class EventKind(StrEnum):
     WORK_OFFER_ACCEPTED = "work.offer.accepted"
     WORK_ITEM_STARTED = "work.started"
     EXECUTION_LEASE_RENEWED = "work.progressed"
-    EXECUTION_LEASE_REVOKED = "ext.missionweave.core.work_execution_lease_revoked"
-    RESOURCE_USAGE_RECORDED = "ext.missionweave.core.resource_usage_recorded"
+    EXECUTION_LEASE_REVOKED = "ext.missionweaveprotocol.core.work_execution_lease_revoked"
+    RESOURCE_USAGE_RECORDED = "ext.missionweaveprotocol.core.resource_usage_recorded"
     WORK_ITEM_CHECKPOINTED = "work.checkpointed"
     WORK_ITEM_BLOCKED = "work.blocked"
     WORK_ITEM_UNBLOCKED = "work.unblocked"
@@ -275,7 +275,7 @@ def _snapshot_uri(value: str, namespace: str) -> str:
     try:
         return f"urn:uuid:{UUID(value)}"
     except ValueError:
-        return f"urn:missionweave:{namespace}:{value}"
+        return f"urn:missionweaveprotocol:{namespace}:{value}"
 
 
 def _snapshot_actor_document(actor: Principal) -> dict[str, str]:

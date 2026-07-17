@@ -1,16 +1,16 @@
 {
-  "contextPackageId": "urn:missionweave:context-package:developer-one-v1",
+  "contextPackageId": "urn:missionweaveprotocol:context-package:developer-one-v1",
   "version": 1,
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "workItemId": "urn:missionweave:work-item:implementation",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
   "sourceEventRange": {
     "fromSequence": 1,
     "toSequence": 35,
     "eventIds": [
-      "urn:missionweave:event:mission-created",
-      "urn:missionweave:event:requirements-accepted",
-      "urn:missionweave:event:implementation-offered"
+      "urn:missionweaveprotocol:event:mission-created",
+      "urn:missionweaveprotocol:event:requirements-accepted",
+      "urn:missionweaveprotocol:event:implementation-offered"
     ]
   },
   "artifactHashes": ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
@@ -18,16 +18,16 @@
   "decisions": [
     {
       "description": "Use cursor-based rather than offset pagination.",
-      "sourceEventIds": ["urn:missionweave:event:requirements-accepted"]
+      "sourceEventIds": ["urn:missionweaveprotocol:event:requirements-accepted"]
     }
   ],
   "constraints": ["Do not change the public error schema."],
   "unresolvedQuestions": ["Confirm the maximum page size."],
-  "generatedBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "generatedBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "generatedAt": "2026-07-15T00:10:00Z",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:coordinator",
+    "keyId": "urn:missionweaveprotocol:key:coordinator",
     "createdAt": "2026-07-15T00:10:00Z",
     "value": "c2lnbmF0dXJl"
   }

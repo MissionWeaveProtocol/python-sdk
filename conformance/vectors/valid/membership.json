@@ -1,14 +1,14 @@
 {
-  "membershipId": "urn:missionweave:membership:developer-one-mission-one",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "member": {"type": "agent", "id": "urn:missionweave:agent:developer-one"},
+  "membershipId": "urn:missionweaveprotocol:membership:developer-one-mission-one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "member": {"type": "agent", "id": "urn:missionweaveprotocol:agent:developer-one"},
   "role": "worker",
   "state": "provisional",
   "membershipEpoch": 1,
   "scopes": ["message.post", "work.accept_offer", "work.execute"],
   "visibilityStartSequence": 35,
-  "contextPackageId": "urn:missionweave:context-package:developer-one-v1",
+  "contextPackageId": "urn:missionweaveprotocol:context-package:developer-one-v1",
   "provisionalExpiresAt": "2026-07-15T01:00:00Z",
   "grantedAt": "2026-07-15T00:00:00Z"
 }

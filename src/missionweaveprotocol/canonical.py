@@ -1,8 +1,9 @@
 """Canonical JSON and content hashing helpers.
 
-MissionWeave signs a deliberately conservative JSON subset.  Domain values are normalized before the
-standard encoder is used: object keys are sorted, insignificant whitespace is removed, times are
-UTC RFC 3339 values, sets are deterministically ordered, and non-finite numbers are rejected.
+MissionWeaveProtocol signs a deliberately conservative JSON subset. Domain values are normalized
+before the standard encoder is used: object keys are sorted, insignificant whitespace is removed,
+times are UTC RFC 3339 values, sets are deterministically ordered, and non-finite numbers are
+rejected.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from pydantic import BaseModel
 
 
 class CanonicalizationError(ValueError):
-    """Raised when a value cannot be represented by MissionWeave canonical JSON."""
+    """Raised when a value cannot be represented by MissionWeaveProtocol canonical JSON."""
 
 
 def _canonical_sort_key(value: Any) -> bytes:
@@ -100,7 +101,7 @@ def sha256_hex(value: bytes) -> str:
 
 
 def canonical_hash(value: Any) -> str:
-    """Return the MissionWeave content identifier for a canonicalizable value."""
+    """Return the MissionWeaveProtocol content identifier for a canonicalizable value."""
 
     return f"sha256:{sha256_hex(canonical_bytes(value))}"
 

@@ -3,9 +3,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.execution import RetryController, RetryExhausted
-from missionweave.models import ResourceBudget, RetryPolicy, WorkContract
-from missionweave.policy import ResourceUsage
+from missionweaveprotocol.execution import RetryController, RetryExhausted
+from missionweaveprotocol.models import ResourceBudget, RetryPolicy, WorkContract
+from missionweaveprotocol.policy import ResourceUsage
 
 
 @dataclass

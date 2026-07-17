@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from missionweave.local_store import LocalStoreError, SQLiteAgentStore
-from missionweave.scheduler import (
+from missionweaveprotocol.local_store import LocalStoreError, SQLiteAgentStore
+from missionweaveprotocol.scheduler import (
     CheckpointRef,
     Dispatch,
     Scheduler,

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.auth import (
+from missionweaveprotocol.auth import (
     AgentIdentity,
     AgentKeyRegistry,
     AuthenticationError,
@@ -13,7 +13,7 @@ from missionweave.auth import (
     SessionAuthority,
 )
 
-KEY_ID = "urn:missionweave:key:reviewer"
+KEY_ID = "urn:missionweaveprotocol:key:reviewer"
 CLIENT_NONCE = "Y2xpZW50LW5vbmNl"
 
 
@@ -77,7 +77,7 @@ def test_challenge_rejects_unknown_or_inactive_key_id() -> None:
     with pytest.raises(AuthenticationError, match="key"):
         authority.issue_challenge(
             identity.agent_id,
-            key_id="urn:missionweave:key:unknown",
+            key_id="urn:missionweaveprotocol:key:unknown",
             client_nonce=CLIENT_NONCE,
         )
 

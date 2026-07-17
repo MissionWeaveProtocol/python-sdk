@@ -1,21 +1,21 @@
 {
   "protocolVersion": "0.1",
   "eventId": "urn:uuid:00000000-0000-4000-8000-000000000002",
-  "groupId": "urn:missionweave:group:mission-one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "sequence": 42,
   "aggregateRevision": 5,
   "kind": "message.posted",
-  "actor": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "cause": {"type": "command", "id": "urn:uuid:00000000-0000-4000-8000-000000000001"},
   "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000099",
-  "conversationId": "urn:missionweave:conversation:planning",
+  "conversationId": "urn:missionweaveprotocol:conversation:planning",
   "occurredAt": "2026-07-15T00:00:01Z",
-  "payload": {"messageId": "urn:missionweave:message:one", "authority": false},
-  "acceptedBy": {"type": "service", "id": "urn:missionweave:service:group-authority"},
+  "payload": {"messageId": "urn:missionweaveprotocol:message:one", "authority": false},
+  "acceptedBy": {"type": "service", "id": "urn:missionweaveprotocol:service:group-authority"},
   "commandHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "signature": {
     "algorithm": "Ed25519",
-    "keyId": "urn:missionweave:key:group-authority",
+    "keyId": "urn:missionweaveprotocol:key:group-authority",
     "createdAt": "2026-07-15T00:00:01Z",
     "value": "c2lnbmF0dXJl"
   }

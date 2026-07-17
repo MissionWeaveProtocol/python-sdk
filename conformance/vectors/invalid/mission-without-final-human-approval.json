@@ -1,6 +1,6 @@
 {
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "revision": 1,
   "objective": "Implement the feature.",
   "definitionOfDone": [
@@ -10,12 +10,12 @@
       "evidenceRequired": ["deterministic_test"]
     }
   ],
-  "missionOwner": {"type": "human", "id": "urn:missionweave:human:mission-owner"},
+  "missionOwner": {"type": "human", "id": "urn:missionweaveprotocol:human:mission-owner"},
   "coordinator": {
-    "agentId": "urn:missionweave:agent:coordinator",
+    "agentId": "urn:missionweaveprotocol:agent:coordinator",
     "agentCardVersion": 2,
     "coordinatorEpoch": 1,
-    "leaseId": "urn:missionweave:lease:coordinator-one"
+    "leaseId": "urn:missionweaveprotocol:lease:coordinator-one"
   },
   "state": "active",
   "budget": {"modelTokenLimit": 10000},

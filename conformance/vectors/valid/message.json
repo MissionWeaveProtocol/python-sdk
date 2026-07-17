@@ -1,15 +1,15 @@
 {
-  "messageId": "urn:missionweave:message:one",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
-  "conversationId": "urn:missionweave:conversation:implementation",
-  "author": {"type": "agent", "id": "urn:missionweave:agent:developer-one"},
+  "messageId": "urn:missionweaveprotocol:message:one",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "conversationId": "urn:missionweaveprotocol:conversation:implementation",
+  "author": {"type": "agent", "id": "urn:missionweaveprotocol:agent:developer-one"},
   "kind": "message",
   "authority": false,
   "content": [
     {"type": "text", "text": "I need clarification on the pagination constraint."},
     {"type": "artifact_ref", "artifactHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
   ],
-  "mentions": [{"type": "agent", "id": "urn:missionweave:agent:coordinator"}],
+  "mentions": [{"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"}],
   "committedAt": "2026-07-15T00:05:00Z"
 }

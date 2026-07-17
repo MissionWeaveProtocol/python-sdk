@@ -1,12 +1,12 @@
 {
-  "conversationId": "urn:missionweave:conversation:implementation",
-  "missionId": "urn:missionweave:mission:one",
-  "groupId": "urn:missionweave:group:mission-one",
+  "conversationId": "urn:missionweaveprotocol:conversation:implementation",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
   "type": "work_item",
-  "primaryWorkItemId": "urn:missionweave:work-item:implementation",
+  "primaryWorkItemId": "urn:missionweaveprotocol:work-item:implementation",
   "title": "Implementation WorkItem",
   "access": {"mode": "group"},
-  "createdBy": {"type": "agent", "id": "urn:missionweave:agent:coordinator"},
+  "createdBy": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "createdAt": "2026-07-15T00:00:00Z",
   "state": "active",
   "revision": 1

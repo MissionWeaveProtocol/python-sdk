@@ -1,13 +1,13 @@
-"""MissionWeave Protocol reference implementation."""
+"""MissionWeaveProtocol reference implementation."""
 
-from missionweave.budget import BudgetLedger, BudgetLedgerSnapshot
-from missionweave.delegation import (
+from missionweaveprotocol.budget import BudgetLedger, BudgetLedgerSnapshot
+from missionweaveprotocol.delegation import (
     DelegationAuthority,
     DelegationViolation,
     DelegationViolationKind,
 )
-from missionweave.lease import ExecutionLease, LeaseState
-from missionweave.models import DelegationBudget, DelegationGrant, ResourceUsage
+from missionweaveprotocol.lease import ExecutionLease, LeaseState
+from missionweaveprotocol.models import DelegationBudget, DelegationGrant, ResourceUsage
 
 __version__ = "0.1.0"
 

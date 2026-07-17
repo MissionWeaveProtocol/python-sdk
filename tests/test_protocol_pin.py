@@ -26,8 +26,9 @@ def test_vendored_protocol_artifacts_match_pin() -> None:
     all_paths: list[Path] = []
 
     assert pin["repository"] == ("https://github.com/missionweaveprotocol/missionweaveprotocol")
+    assert pin["commit"] == "00964ea9064cbf1f0eca8af21a0c57367ee14752"
     assert pin["protocolVersion"] == "0.1"
-    assert pin["wireNamespace"] == "missionweave"
+    assert pin["wireNamespace"] == "missionweaveprotocol"
 
     for name in ("schemas", "conformance"):
         artifact = pin["artifacts"][name]
@@ -37,4 +38,3 @@ def test_vendored_protocol_artifacts_match_pin() -> None:
         all_paths.extend(paths)
 
     assert _tree_digest(sorted(all_paths)) == pin["bundleSha256"]
-    assert len(pin["commit"]) == 40

@@ -7,16 +7,16 @@ from typing import Any
 
 import pytest
 
-from missionweave.conformance import SchemaCatalog
-from missionweave.crypto import generate_keypair
-from missionweave.documents import (
+from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.crypto import generate_keypair
+from missionweaveprotocol.documents import (
     ArtifactLocation,
     DocumentMappingError,
     DocumentSigner,
     ProtocolDocumentAdapter,
     ProtocolDocumentConfig,
 )
-from missionweave.models import (
+from missionweaveprotocol.models import (
     AgentCard,
     Approval,
     Artifact,
@@ -89,7 +89,7 @@ def projections() -> ProjectionFixture:
     adapter = ProtocolDocumentAdapter(
         ProtocolDocumentConfig(
             organization_id="acme",
-            endpoints=("wss://agents.example.test/missionweave",),
+            endpoints=("wss://agents.example.test/missionweaveprotocol",),
             max_concurrency=2,
             registry_signer=registry_signer,
             principal_signers=(agent_signer, human_signer),
@@ -246,7 +246,7 @@ def projections() -> ProjectionFixture:
         id="artifact-one",
         content_hash=ARTIFACT_HASH,
         media_type="application/vnd.git.patch",
-        schema_uri="urn:missionweave:schema:opaque",
+        schema_uri="urn:missionweaveprotocol:schema:opaque",
         producing_agent_id=card.agent_id,
         agent_card_version=card.version,
         mission_id=mission.id,
@@ -357,8 +357,8 @@ def test_all_required_projection_documents_validate_normative_schemas(
 
     agent_id = str(documents["agent-card.schema.json"]["agentId"])
     mission_id = str(documents["mission.schema.json"]["missionId"])
-    assert agent_id.startswith("urn:missionweave:agent:")
-    assert mission_id.startswith("urn:missionweave:mission:")
+    assert agent_id.startswith("urn:missionweaveprotocol:agent:")
+    assert mission_id.startswith("urn:missionweaveprotocol:mission:")
     assert documents["group.schema.json"]["state"] == "active"
     assert documents["mission.schema.json"]["state"] == "approved"
     assert documents["work-item.schema.json"]["state"] == "verified"
@@ -452,7 +452,7 @@ def test_execution_approval_maps_to_normative_work_execution_decision(
 
     SchemaCatalog().validate("approval.schema.json", document)
     assert document["kind"] == "work_execution"
-    assert document["workItemId"].startswith("urn:missionweave:work-item:")
+    assert document["workItemId"].startswith("urn:missionweaveprotocol:work-item:")
     assert "operation:production.deploy" in document["conditions"]
     assert projections.adapter.verify_signature(document, projections.human_signer.public_key)
 
@@ -481,4 +481,4 @@ def test_archived_group_requires_and_validates_real_snapshot_reference(
     )
     SchemaCatalog().validate("group.schema.json", document)
     assert document["state"] == "archived"
-    assert document["archiveSnapshotId"].startswith("urn:missionweave:group-snapshot:")
+    assert document["archiveSnapshotId"].startswith("urn:missionweaveprotocol:group-snapshot:")

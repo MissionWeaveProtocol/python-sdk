@@ -1,4 +1,4 @@
-"""SQLite Adapter for rebuildable Agent-local MissionWeave state."""
+"""SQLite Adapter for rebuildable Agent-local MissionWeaveProtocol state."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from missionweave.scheduler import (
+from missionweaveprotocol.scheduler import (
     CheckpointRef,
     EstimateBand,
     QueueRecord,

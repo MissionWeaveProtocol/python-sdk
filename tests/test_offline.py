@@ -5,10 +5,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from missionweave.auth import AgentIdentity
-from missionweave.crypto import verify_canonical
-from missionweave.local_store import SQLiteAgentStore
-from missionweave.models import (
+from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.crypto import verify_canonical
+from missionweaveprotocol.local_store import SQLiteAgentStore
+from missionweaveprotocol.models import (
     Checkpoint,
     CheckpointWorkItemPayload,
     Command,
@@ -20,13 +20,13 @@ from missionweave.models import (
     WorkItem,
     WorkItemStatus,
 )
-from missionweave.offline import (
+from missionweaveprotocol.offline import (
     OFFLINE_EXECUTION_EXTENSION,
     OfflineExecutionPolicy,
     OfflineLimits,
     OfflinePolicyError,
 )
-from missionweave.policy import ResourceUsage
+from missionweaveprotocol.policy import ResourceUsage
 
 NOW = datetime(2026, 7, 16, 9, 0, tzinfo=UTC)
 AGENT_ID = "agent://acme/worker"
