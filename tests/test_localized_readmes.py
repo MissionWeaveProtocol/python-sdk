@@ -93,11 +93,12 @@ LOCALIZED_TERMINOLOGY = (
         "README.de.md",
         (
             "untergeordnete Missionen (Child Mission)",
-            "per Work Proposal vorgeschlagenen untergeordneten WorkItem",
+            "per Work Proposal vorgeschlagenes untergeordnetes WorkItem",
             "zwei gleichzeitige Softwareentwicklungs-Missionen",
-            "Klärung zwischen Workern",
-            "zwei isolierten Capacity Slots",
-            "blockierten und wiederaufgenommenen WorkItem",
+            "Klärungen zwischen Workern",
+            "zwei isolierte Capacity Slots",
+            "blockiertes und wiederaufgenommenes WorkItem",
+            "eine exakt signierte finale Approval",
         ),
         (
             "rekursive Child Mission",
@@ -105,6 +106,7 @@ LOCALIZED_TERMINOLOGY = (
             "Unterarbeit",
             "fortgesetzter Arbeit",
             "blockierten und fortgesetzten WorkItem",
+            "Das deterministische Szenario führt",
         ),
     ),
 )
