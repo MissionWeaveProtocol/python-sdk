@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://missionweaveprotocol.github.io/missionweaveprotocol.github.io/">Official website and documentation</a></strong>
+  <strong><a href="https://missionweaveprotocol.github.io/">Official website and documentation</a></strong>
 </p>
 
 The MissionWeave Python SDK is the official Python reference implementation of the
