@@ -1,4 +1,6 @@
-[English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Español](README.es.md) | **Français**
+[English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) |
+[日本語](README.ja.md) | [Español](README.es.md) | **Français** |
+[Deutsch](README.de.md)
 
 # MissionWeaveProtocol Python SDK
 
