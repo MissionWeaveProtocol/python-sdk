@@ -96,11 +96,11 @@ uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 Der Command gibt einen kanonischen JSON-Bericht aus und beendet sich mit einem
 Status ungleich null, wenn ein erforderliches Verhalten fehlt. Sein Bericht
 enthält 50 benannte Prüfungen. Das deterministische Szenario führt zwei
-gleichzeitige Softwareentwicklungs-Mission mit einem gemeinsamen Reviewer,
+gleichzeitige Softwareentwicklungs-Missionen mit einem gemeinsamen Reviewer,
 einem von einem Worker formal per Work Proposal vorgeschlagenen untergeordneten
-WorkItem, einer untergeordneten Mission für Sicherheit, Klärung zwischen Worker,
-zwei isolierten Capacity Slot, ausschließlich Checkpoint-basierter Preemption,
-einem blockierten und fortgesetzten WorkItem, Prüfung durch den Coordinator,
+WorkItem, einer untergeordneten Mission für Sicherheit, Klärung zwischen Workern,
+zwei isolierten Capacity Slots, ausschließlich Checkpoint-basierter Preemption,
+einem blockierten und wiederaufgenommenen WorkItem, Prüfung durch den Coordinator,
 einer menschlichen Änderungsanforderung und genauen signierten finalen Approval
 aus.
 

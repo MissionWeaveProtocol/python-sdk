@@ -38,7 +38,8 @@ MissionWeaveProtocol Python SDK 是
 - 每个 Mission 对应一个临时 Group 和单调递增的 Event 历史；
 - 由人类担任根 MissionOwner，并支持可替换且受 epoch fencing 保护的 Coordinator Agent；
 - 由 Organization 签名的 Agent Card，与短暂存在的 Presence Record 分离；
-- 对等 Conversation，以及显式的 Work Proposal、工作项授权、Work Offer、接受 Work Offer、所有权、
+- 对等 Conversation，以及显式的 Work Proposal、工作项授权、发出 Work Offer、接受 Work Offer、
+  所有权、
   execution lease、checkpoint、Evidence、审查和 Approval 状态转换；
 - 有时限且限定目标范围的 Delegation Grant，并受 capability、budget、depth、
   Membership 和 Coordinator epoch 约束；

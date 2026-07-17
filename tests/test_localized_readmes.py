@@ -28,6 +28,7 @@ LOCALIZED_TERMINOLOGY = (
         "README.zh-CN.md",
         (
             "子任务（Child Mission）",
+            "工作项授权、发出 Work Offer、接受 Work Offer",
             "通过正式 Work Proposal 提出的后代工作项",
             "工作项阻塞与恢复",
         ),
@@ -45,6 +46,7 @@ LOCALIZED_TERMINOLOGY = (
         "README.zh-TW.md",
         (
             "子任務（Child Mission）",
+            "工作項授權、發出 Work Offer、接受 Work Offer",
             "透過正式 Work Proposal 提出的後代工作項",
             "工作項受阻與復原",
         ),
@@ -92,9 +94,18 @@ LOCALIZED_TERMINOLOGY = (
         (
             "untergeordnete Missionen (Child Mission)",
             "per Work Proposal vorgeschlagenen untergeordneten WorkItem",
+            "zwei gleichzeitige Softwareentwicklungs-Missionen",
+            "Klärung zwischen Workern",
+            "zwei isolierten Capacity Slots",
+            "blockierten und wiederaufgenommenen WorkItem",
+        ),
+        (
+            "rekursive Child Mission",
+            "einer Child Mission",
+            "Unterarbeit",
+            "fortgesetzter Arbeit",
             "blockierten und fortgesetzten WorkItem",
         ),
-        ("rekursive Child Mission", "einer Child Mission", "Unterarbeit", "fortgesetzter Arbeit"),
     ),
 )
 
