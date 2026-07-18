@@ -27,7 +27,7 @@ LOCALIZED_TERMINOLOGY = (
     (
         "README.zh-CN.md",
         (
-            "子任务（Child Mission，即独立的 Mission，而非 WorkItem）",
+            "子任务（Child Mission，即独立的 Mission，而非工作项）",
             "工作项授权、发出 Work Offer、接受 Work Offer",
             "通过正式 Work Proposal 提出的下级工作项",
             "工作项阻塞与恢复",
@@ -40,13 +40,14 @@ LOCALIZED_TERMINOLOGY = (
             "发出任务",
             "接受任务",
             "Mission/WorkItem",
+            "而非 WorkItem",
             "后代工作项",
         ),
     ),
     (
         "README.zh-TW.md",
         (
-            "子任務（Child Mission，即獨立的 Mission，而非 WorkItem）",
+            "子任務（Child Mission，即獨立的 Mission，而非工作項）",
             "工作項授權、發出 Work Offer、接受 Work Offer",
             "透過正式 Work Proposal 提出的下層工作項",
             "工作項受阻與復原",
@@ -59,6 +60,7 @@ LOCALIZED_TERMINOLOGY = (
             "發出任務",
             "接受任務",
             "Mission/WorkItem",
+            "而非 WorkItem",
             "後代工作項",
         ),
     ),
@@ -126,7 +128,7 @@ LOCALIZED_TERMINOLOGY = (
             "Klärungen zwischen Workern",
             "zwei isolierte Capacity Slots",
             "blockiertes und wiederaufgenommenes WorkItem",
-            "eine exakt signierte finale Approval",
+            "exakt signierte finale Approvals",
         ),
         (
             "rekursive Child Mission",

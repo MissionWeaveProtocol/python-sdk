@@ -39,26 +39,26 @@ Protokoll- und Python-Releases werden unabhängig voneinander versioniert.
 
 ## Was v0.1 implementiert
 
-- einen temporären Group und eine monotone Event-Historie pro Mission;
+- eine temporäre Group und eine monotone Event-Historie pro Mission;
 - einen menschlichen MissionOwner der Root Mission und einen austauschbaren,
-  durch Epoch geschützten Coordinator Agent;
-- von der Organization signierte Agent Card, getrennt von vorübergehenden
-  Presence Record;
+  durch Epoch-Fencing abgesicherten Coordinator Agent;
+- von der Organization signierte Agent Cards, getrennt von vorübergehenden
+  Presence Records;
 - Conversation zwischen Peers sowie ausdrückliche Übergänge für Work Proposal,
   Autorisierung, Angebot, Annahme, Ownership, Execution Lease, Checkpoint,
   Evidence, Prüfung und Approval;
-- ablaufende, auf ein Ziel begrenzte Delegation Grant, geschützt durch Capability,
-  Budget, Tiefe, Membership und Coordinator Epoch;
+- ablaufende, auf ein Ziel begrenzte Delegation Grants, deren Gültigkeit durch Capability,
+  Budget, Tiefe, Membership und Coordinator-Epoch begrenzt wird;
 - rekursive Unteraufgaben (Child Mission), jeweils eine eigenständige Mission und kein WorkItem,
   sowie verknüpfte Follow-up Mission;
-- Group-spezifische Warteschlangen des Worker mit einem gewichteten, fairen
-  globalen Scheduler und isolierten Capacity Slot;
+- Group-spezifische Warteschlangen der Worker mit einem gewichteten, fairen
+  globalen Scheduler und isolierten Capacity Slots;
 - mindestens einmalige Delivery, stabile Action ID, Deduplizierung, Cursor,
   Replay und lokale Wiederherstellung;
 - signierte Context Package, klassifizierte Veröffentlichung
   wiederverwendbaren Wissens und signierte Group-Archive;
-- kurzlebige Membership Token und Capability Token, geschützt durch Session,
-  Membership, Ownership, Lease, Scope, Approval und Budget;
+- kurzlebige Membership Tokens und Capability Tokens, deren Gültigkeit an Session,
+  Membership, Ownership, Execution Lease, Scope, Approval und Budget gebunden ist;
 - autoritative sechsdimensionale Zuweisung für Mission/WorkItem und kumulative
   Nutzungsabrechnung;
 - kanonisches JSON nach RFC 8785 und Ed25519-Signaturen über schemakonformen
@@ -102,12 +102,12 @@ von einem Worker formal per Work Proposal vorgeschlagenes untergeordnetes WorkIt
 eine Unteraufgabe für die Sicherheitsprüfung, Klärungen zwischen Workern, zwei
 isolierte Capacity Slots, ausschließlich Checkpoint-basierte Preemption, ein
 blockiertes und wiederaufgenommenes WorkItem, die Prüfung durch den Coordinator,
-eine menschliche Änderungsanforderung sowie eine exakt signierte finale Approval.
+eine menschliche Änderungsanforderung sowie exakt signierte finale Approvals.
 
 Es injiziert außerdem doppelte Delivery, eine Action-ID-Kollision,
 Event-basierte Rekonstruktion der Warteschlange nach dem Neustart eines Worker,
-Fencing des vorherigen Coordinator, veraltete Session/Membership/Ownership Epoch,
-echte WebSocket-Trennung und -Wiederverbindung, Ablauf einer Lease,
+Fencing des vorherigen Coordinators, veraltete Session/Membership/Ownership Epoch,
+echte WebSocket-Trennung und -Wiederverbindung, Ablauf einer Execution Lease,
 Offline-Abgleich, signierten Context für spät beitretende Mitglieder,
 klassifizierte Wissensveröffentlichung und signierte Archiv-Snapshots. Siehe
 [poc/README.md](poc/README.md).
@@ -198,7 +198,7 @@ if __name__ == "__main__":
 - `models.py` enthält die kompakte autoritative Projektion des Core; diese
   Klassen werden nicht direkt als Wire-Objekte gesendet.
 - `delegation.py`, `lease.py` und `budget.py` erzwingen begrenzte
-  Arbeitsautorität, strukturiertes Execution Fencing und hierarchische
+  Arbeitsautorität, strukturiertes Fencing der Ausführung und hierarchische
   sechsdimensionale Abrechnung.
 - `documents.py`, `wire.py` und `gateway.py` überführen Projektionen in
   gepinnte, schemakonforme und signierte Protokolldokumente.
