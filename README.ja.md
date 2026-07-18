@@ -79,6 +79,27 @@ uv run missionweaveprotocol-conformance --root .
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## Signed Document の署名と検証
+
+`SignedDocumentCodec` は、署名が必須の 9 種類の kind を明示的に受け取り、文書種別を推論しません。
+署名側の唯一のアダプターは `SigningKey` です。`KeyResolver` は `KeyResolutionRequest` を受け取り、
+完全性を `ORGANIZATION_WIDE` と明示した `KeyRegistrySnapshot` を返す必要があります。
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+検証エラーは wire には非オラクル型の統一エラーだけを公開し、保護されたローカル診断には最初の失敗段階と
+理由を保持します。部分的、または完全性が未指定の Agent Registry スナップショットは fail closed になります。
+決定的なテスト専用 fixture を使う実行可能なアダプター例は次のとおりです。
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## 2 Mission の POC を実行する
 
 ```bash

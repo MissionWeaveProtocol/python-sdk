@@ -73,6 +73,27 @@ separate protocol checkout or release bundle:
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## Sign and verify Signed Documents
+
+`SignedDocumentCodec` accepts exactly the nine explicit signature-required kinds. `SigningKey` is
+the only signing adapter; `KeyResolver` receives a `KeyResolutionRequest` and must return a
+`KeyRegistrySnapshot` whose completeness is explicitly `ORGANIZATION_WIDE`.
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+Verification errors expose one non-oracular wire error while retaining the first failing stage and
+reason in protected local diagnostics. Partial or unspecified Agent Registry snapshots fail closed. A
+runnable adapter example using deterministic test-only fixtures is available with:
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## Run the two-Mission POC
 
 ```bash

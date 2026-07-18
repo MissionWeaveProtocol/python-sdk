@@ -74,6 +74,26 @@ uv run missionweaveprotocol-conformance --root .
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## 签名并验证 Signed Document
+
+`SignedDocumentCodec` 仅接受九种需要签名的显式 kind，不会推断文档类型。`SigningKey` 是唯一的
+签名适配器；`KeyResolver` 接收 `KeyResolutionRequest`，并且必须返回明确声明
+`ORGANIZATION_WIDE` 完整性的 `KeyRegistrySnapshot`。
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+验证错误对协议线仅暴露统一的非预言式错误，同时在受保护的本地诊断中保留首个失败阶段和原因。
+局部或未声明完整性的 Agent Registry 快照会 fail closed。可运行的适配器示例使用确定性的测试专用夹具：
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## 运行双 Mission POC
 
 ```bash

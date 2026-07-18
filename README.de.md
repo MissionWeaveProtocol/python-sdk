@@ -88,6 +88,29 @@ auch einen separaten Protokoll-Checkout oder ein Release-Bündel validieren:
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## Signed Documents signieren und verifizieren
+
+`SignedDocumentCodec` akzeptiert ausdrücklich nur die neun signaturpflichtigen Kinds und leitet den
+Dokumenttyp nicht ab. `SigningKey` ist der einzige Signaturadapter; `KeyResolver` erhält einen
+`KeyResolutionRequest` und muss einen `KeyRegistrySnapshot` mit ausdrücklich deklarierter
+`ORGANIZATION_WIDE`-Vollständigkeit zurückgeben.
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+Verifizierungsfehler legen auf dem Wire nur einen einheitlichen, nicht-orakelnden Fehler offen; die
+erste fehlgeschlagene Stufe und ihr Grund bleiben in geschützten lokalen Diagnosen erhalten.
+Partielle Agent-Registry-Snapshots oder Snapshots ohne Vollständigkeitserklärung schlagen fail closed
+fehl. Das ausführbare Beispiel verwendet deterministische Fixtures ausschließlich für Tests:
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## POC mit zwei Mission ausführen
 
 ```bash

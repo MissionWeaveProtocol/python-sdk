@@ -80,6 +80,29 @@ de distribución:
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## Firmar y verificar Signed Documents
+
+`SignedDocumentCodec` acepta explícitamente solo los nueve kinds que requieren firma y no infiere
+el tipo de documento. `SigningKey` es el único adaptador de firma; `KeyResolver` recibe una
+`KeyResolutionRequest` y debe devolver un `KeyRegistrySnapshot` con completitud
+`ORGANIZATION_WIDE` explícita.
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+Los errores de verificación solo exponen un error wire no oracular, mientras conservan la primera
+etapa fallida y su motivo en diagnósticos locales protegidos. Los snapshots parciales del Agent
+Registry o sin una declaración de completitud fallan de forma cerrada. El ejemplo ejecutable usa fixtures
+deterministas solo para pruebas:
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## Ejecutar el POC de dos Mission
 
 ```bash
