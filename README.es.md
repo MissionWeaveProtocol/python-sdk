@@ -18,7 +18,7 @@ Core autoritativo, el entorno de ejecución de Agent, el Worker Scheduler, el ga
 adaptadores de almacenamiento, el ejecutor de pruebas de conformidad y una prueba de concepto
 ejecutable.
 
-El wire protocol actual es **MissionWeaveProtocol 0.1**. Tanto la distribución de Python como
+El protocolo de comunicaciones actual es **MissionWeaveProtocol 0.1**. Tanto la distribución de Python como
 el paquete de importación se llaman `missionweaveprotocol`; los puntos de entrada de línea de
 comandos usan el prefijo `missionweaveprotocol-`.
 
@@ -39,22 +39,22 @@ Las versiones del protocolo y de Python se gestionan de forma independiente.
 ## Qué implementa v0.1
 
 - un Group temporal y un historial de Event monotónico por cada Mission;
-- un MissionOwner raíz humano y un Coordinator Agent reemplazable, protegido mediante epoch fencing;
-- Agent Card firmadas por la Organization y separadas de los Presence Record efímeros;
+- un MissionOwner raíz humano y un Coordinator Agent reemplazable, protegido mediante fencing de epoch;
+- Agent Cards firmadas por la Organization y separadas de los Presence Records efímeros;
 - Conversation entre pares, además de transiciones explícitas para Work Proposal, autorización,
   oferta, aceptación, ownership, execution lease, checkpoint, Evidence, revisión y Approval;
-- los Delegation Grant con vencimiento y alcance limitado al objetivo, sujetos a capability,
-  budget, depth, Membership y los epoch del Coordinator;
+- Delegation Grants con vencimiento y alcance limitado al objetivo, sujetos a capability,
+  presupuesto, profundidad, Membership y los epoch del Coordinator;
 - subtareas recursivas (Child Mission), cada una de ellas una Mission independiente y no un WorkItem,
   y Mission de seguimiento enlazadas;
-- colas de Worker por Group, un Scheduler global con equidad ponderada y capacity slot aislados;
+- colas de Worker por Group, un Scheduler global con equidad ponderada y slots de capacidad aislados;
 - Delivery al menos una vez, Action ID estables, deduplicación, Cursor, replay y recuperación local;
 - Context Package firmados, publicación clasificada de conocimiento reutilizable y archivos de
   Group firmados;
-- token de Membership y capability de corta duración, restringidos por session, Membership,
-  ownership, lease, scope, Approval y budget;
+- tokens de Membership y capability de corta duración, restringidos por sesión, Membership,
+  ownership, Execution Lease, alcance, Approval y presupuesto;
 - asignación autoritativa de Mission/WorkItem en seis dimensiones y contabilidad acumulativa del uso;
-- JSON canónico RFC 8785 y firmas Ed25519 sobre frame WebSocket/TLS válidos según los esquemas;
+- JSON canónico RFC 8785 y firmas Ed25519 sobre frames WebSocket/TLS válidos según los esquemas;
 - estado autoritativo en PostgreSQL, proyecciones locales de Agent en SQLite y Artifact direccionados
   por contenido.
 
@@ -90,13 +90,14 @@ El comando emite un informe JSON canónico y termina con un estado distinto de c
 comportamiento obligatorio. El informe contiene 50 comprobaciones con nombre. El escenario
 determinista ejecuta dos Mission de desarrollo de software en paralelo con un reviewer compartido,
 un WorkItem subordinado propuesto formalmente por un Worker mediante una Work Proposal, una subtarea
-de seguridad, aclaraciones entre Worker, dos execution slot aislados, preemption únicamente en
-checkpoint, un WorkItem bloqueado y reanudado, revisión del Coordinator, una solicitud humana de
-cambios y Approval finales firmadas con exactitud.
+de seguridad, aclaraciones entre Workers, dos slots de ejecución aislados, preempción únicamente en
+los checkpoints, un WorkItem bloqueado y reanudado, revisión del Coordinator, una solicitud humana de
+cambios y Approval finales firmadas de forma exacta.
 
 También inyecta Delivery duplicado, colisión de Action ID, reconstrucción de colas basada en Event
 tras reiniciar un Worker, fencing del Coordinator anterior, epoch obsoletos de
-Session/Membership/Ownership, desconexión y reconexión WebSocket reales, vencimiento de lease,
+Session/Membership/Ownership, desconexión y reconexión WebSocket reales, vencimiento de una
+Execution Lease,
 reconciliación sin conexión, Context firmado para miembros que se incorporan tarde, publicación
 clasificada de conocimiento e instantáneas de archivo firmadas. Consulta
 [poc/README.md](poc/README.md).
@@ -114,7 +115,7 @@ adaptador de PostgreSQL y verifica el estado de Mission junto con el replay orde
 
 ## Ejecutar el gateway WebSocket de Group
 
-Crea claves locales desechables y un registry firmado por la Organization:
+Crea claves locales desechables y un Agent Registry firmado por la Organization:
 
 ```bash
 uv run python examples/create_dev_registry.py
@@ -131,10 +132,10 @@ uv run missionweaveprotocol-server \
   --allow-insecure
 ```
 
-`--allow-insecure` solo debe utilizarse para desarrollo en loopback. Una implementación desplegada
+`--allow-insecure` solo debe utilizarse para desarrollo en bucle local. Una implementación desplegada
 debe omitirlo y proporcionar `--tls-certfile` junto con `--tls-keyfile`;
 MissionWeaveProtocol 0.1 exige `wss` sobre TLS 1.3. Una conexión autenticada multiplexa varias
-suscripciones de Group. El gateway valida los frame frente a los esquemas, rechaza miembros JSON
+suscripciones de Group. El gateway valida los frames frente a los esquemas, rechaza miembros JSON
 duplicados, verifica las firmas de Agent Command y los epoch de Session/Membership, aplica la
 visibilidad de Membership y los filtros de atención, firma los Event y reproduce desde los Cursor
 confirmados.
@@ -181,7 +182,7 @@ if __name__ == "__main__":
 ## Interfaz de implementación
 
 - `models.py` contiene la proyección compacta y autoritativa del Core; estas clases no se envían
-  directamente como objetos de wire;
+  directamente como objetos del protocolo;
 - `delegation.py`, `lease.py` y `budget.py` aplican la autoridad de trabajo con alcance limitado,
   el execution fencing estructurado y la contabilidad jerárquica en seis dimensiones;
 - `documents.py`, `wire.py` y `gateway.py` adaptan las proyecciones a documentos de protocolo
@@ -189,7 +190,7 @@ if __name__ == "__main__":
 - `Core` controla las transiciones de estado detrás de la pequeña interfaz `perform`, `query` y
   `replay`;
 - el transporte, la autenticación, el almacenamiento autoritativo, el almacenamiento local del
-  Agent, el almacenamiento de Artifact, la emisión de policy/token, la publicación de Context, la
+  Agent, el almacenamiento de Artifact, la emisión de políticas y tokens, la publicación de Context, la
   planificación y el control humano son adaptadores con límites explícitos.
 
 Esta separación permite que otra implementación elija modelos internos, almacenamiento o lenguaje

@@ -43,13 +43,13 @@ MissionWeaveProtocol Python SDK 是
   execution lease、checkpoint、Evidence、审查和 Approval 状态转换；
 - 有时限且限定目标范围的 Delegation Grant，并受 capability、budget、depth、
   Membership 和 Coordinator epoch 约束；
-- 递归的子任务（Child Mission，即独立的 Mission，而非 WorkItem）和相互关联的后续 Mission；
+- 递归的子任务（Child Mission，即独立的 Mission，而非工作项）和相互关联的后续 Mission；
 - 每个 Group 独立的 Worker 队列、加权公平的全局 Scheduler，以及隔离的容量槽位；
 - 至少一次 Delivery、稳定的 Action ID、去重、Cursor、重放和本地恢复；
 - 已签名的 Context Package、带分类的可复用知识发布，以及已签名的 Group 归档；
 - 短期 Membership 和 capability token，并受 session、Membership、ownership、lease、
   scope、Approval 和 budget 约束；
-- 权威的六维 Mission/工作项额度分配和累计使用量核算；
+- 权威的六维 Mission 和工作项额度分配与累计使用量核算；
 - 规范化 RFC 8785 JSON，以及对符合 schema 的 WebSocket/TLS frame 进行 Ed25519 签名；
 - PostgreSQL 权威状态、SQLite Agent 本地投影，以及按内容寻址的 Artifact。
 
