@@ -1,0 +1,8 @@
+{
+  "code": "STALE_COORDINATOR_EPOCH",
+  "message": "Internal error names are not wire error codes",
+  "retryable": false,
+  "relatedActionId": "urn:uuid:10000000-0000-4000-8000-000000000107",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "occurredAt": "2026-07-15T00:00:02Z"
+}

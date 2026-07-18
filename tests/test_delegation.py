@@ -9,6 +9,7 @@ import pytest
 from jsonschema import ValidationError as JSONSchemaValidationError
 from pydantic import ValidationError as PydanticValidationError
 
+from missionweaveprotocol.auth import default_agent_key_id
 from missionweaveprotocol.conformance import SchemaCatalog
 from missionweaveprotocol.core import (
     AuthorizationDenied,
@@ -40,6 +41,7 @@ from missionweaveprotocol.models import (
     EventKind,
     GrantCooperationOverridePayload,
     GrantDelegationPayload,
+    Membership,
     OfferWorkItemPayload,
     OpenAgentSessionPayload,
     Principal,
@@ -51,6 +53,7 @@ from missionweaveprotocol.models import (
     ResourceBudget,
     Role,
     SelectionBasis,
+    SignatureEnvelope,
     WorkContract,
     WorkItem,
     WorkItemStatus,
@@ -97,18 +100,46 @@ class DelegationHarness:
     ) -> Command:
         self.action_number += 1
         session_epoch = self.epochs.get(actor.id) if actor.type is ActorType.AGENT else None
+        resolved_action_id = action_id or f"action:delegation:{self.action_number}"
         return Command(
-            action_id=action_id or f"action:delegation:{self.action_number}",
+            action_id=resolved_action_id,
             kind=kind,
             actor=actor,
             group_id=group_id,
             session_epoch=session_epoch,
             coordinator_epoch=coordinator_epoch,
+            correlation_id=resolved_action_id,
+            conversation_id=getattr(payload, "conversation_id", None),
+            work_item_id=getattr(payload, "work_item_id", None),
             cooperation_override_grant_id=cooperation_override_grant_id,
             issued_at=self.clock(),
             payload=payload,
-            signature="test-signature",
+            signature=SignatureEnvelope(
+                key_id=default_agent_key_id(actor.id),
+                created_at=self.clock(),
+                value="test-signature",
+            ),
         )
+
+    async def perform(self, command: Command) -> Event:
+        if (
+            command.group_id is not None
+            and command.actor.type is not ActorType.SYSTEM
+            and command.kind
+            not in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}
+        ):
+            membership = await self.core.query(
+                Query(
+                    kind=QueryKind.MEMBERSHIP,
+                    entity_id=command.actor.id,
+                    group_id=command.group_id,
+                    actor_type=command.actor.type,
+                )
+            )
+            if not isinstance(membership, Membership):
+                raise AssertionError("test command issuer lacks an authoritative Membership")
+            command = command.model_copy(update={"membership_epoch": membership.epoch})
+        return await self.core.perform(command)
 
     async def register(self, agent_id: str, *, python_version: int = 3) -> None:
         _private_key, public_key = generate_keypair()
@@ -122,14 +153,14 @@ class DelegationHarness:
             issued_at=self.clock(),
             signature="organization-signature",
         )
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.REGISTER_AGENT_CARD,
                 self.system,
                 RegisterAgentCardPayload(card=card),
             )
         )
-        event = await self.core.perform(
+        event = await self.perform(
             self.command(
                 CommandKind.OPEN_AGENT_SESSION,
                 self.system,
@@ -147,7 +178,7 @@ class DelegationHarness:
             "agent:replacement",
         ):
             await self.register(agent_id)
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.CREATE_MISSION,
                 self.owner,
@@ -181,7 +212,7 @@ class DelegationHarness:
         )
 
     async def add_member(self, principal: Principal, roles: tuple[Role, ...]) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.ADD_MEMBERSHIP,
                 self.coordinator,
@@ -236,7 +267,7 @@ class DelegationHarness:
         cooperation_override_grant_id: str | None = None,
         action_id: str | None = None,
     ) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.GRANT_DELEGATION,
                 self.coordinator,
@@ -265,7 +296,7 @@ class DelegationHarness:
         target_command_kind: CommandKind,
         target_action_id: str,
     ) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.GRANT_COOPERATION_OVERRIDE,
                 self.owner,
@@ -289,7 +320,7 @@ class DelegationHarness:
         *,
         parent_work_item_id: str | None = None,
     ) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.CREATE_WORK_ITEM,
                 self.coordinator,
@@ -315,7 +346,7 @@ class DelegationHarness:
         cooperation_override_grant_id: str | None = None,
         action_id: str | None = None,
     ) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.CREATE_WORK_ITEM,
                 actor or self.delegate,
@@ -341,7 +372,7 @@ class DelegationHarness:
     ) -> Event:
         work = await self.core.query(Query(kind=QueryKind.WORK_ITEM, entity_id=work_item_id))
         assert isinstance(work, WorkItem)
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.OFFER_WORK_ITEM,
                 actor or self.delegate,
@@ -586,7 +617,7 @@ async def test_coordinator_replacement_fences_existing_grant(
     delegation: DelegationHarness,
 ) -> None:
     await delegation.issue_grant()
-    await delegation.core.perform(
+    await delegation.perform(
         delegation.command(
             CommandKind.REPLACE_COORDINATOR,
             delegation.owner,
@@ -628,7 +659,7 @@ async def test_ended_membership_invalidates_grant(
     delegation: DelegationHarness,
 ) -> None:
     await delegation.issue_grant()
-    await delegation.core.perform(
+    await delegation.perform(
         delegation.command(
             CommandKind.END_MEMBERSHIP,
             delegation.coordinator,
@@ -647,7 +678,7 @@ async def test_reactivated_membership_does_not_revive_old_grant(
     delegation: DelegationHarness,
 ) -> None:
     await delegation.issue_grant()
-    await delegation.core.perform(
+    await delegation.perform(
         delegation.command(
             CommandKind.END_MEMBERSHIP,
             delegation.coordinator,
@@ -666,7 +697,7 @@ async def test_reactivated_membership_does_not_revive_old_grant(
 async def test_grant_issuance_rejects_terminal_target(
     delegation: DelegationHarness,
 ) -> None:
-    await delegation.core.perform(
+    await delegation.perform(
         delegation.command(
             CommandKind.CANCEL_WORK_ITEM,
             delegation.coordinator,
@@ -707,7 +738,7 @@ async def test_authorizing_proposal_must_preserve_parent_scope(
     await delegation.issue_grant(max_descendant_depth=2)
     await delegation.create_delegated_work("work:first-child")
     contract = delegation.contract(goal="Proposal with a stable parent")
-    await delegation.core.perform(
+    await delegation.perform(
         delegation.command(
             CommandKind.PROPOSE_WORK_ITEM,
             delegation.delegate,

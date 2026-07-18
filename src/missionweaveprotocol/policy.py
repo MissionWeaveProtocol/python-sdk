@@ -667,7 +667,8 @@ class ExecutionAuthorization:
             command.kind is not CommandKind.GRANT_EXECUTION_APPROVAL
             or command.actor != value.approver
             or command.group_id != mission.group_id
-            or command.signature != value.signature
+            or command.signature is None
+            or command.signature.value != value.signature
         ):
             raise PolicyError("persisted Approval does not match its accepted Command")
         try:
@@ -688,7 +689,7 @@ class ExecutionAuthorization:
         if (
             public_key is None
             or signature is None
-            or not verify_canonical(command.signing_payload(), signature, public_key)
+            or not verify_canonical(command.signing_payload(), signature.value, public_key)
         ):
             raise PolicyError("persisted high-risk Approval signature is invalid")
         return value

@@ -26,7 +26,7 @@ def test_vendored_protocol_artifacts_match_pin() -> None:
     all_paths: list[Path] = []
 
     assert pin["repository"] == ("https://github.com/missionweaveprotocol/missionweaveprotocol")
-    assert pin["commit"] == "00964ea9064cbf1f0eca8af21a0c57367ee14752"
+    assert pin["commit"] == "6f10987627d62fb296e3490ceceb5539b1e94b70"
     assert pin["protocolVersion"] == "0.1"
     assert pin["wireNamespace"] == "missionweaveprotocol"
 

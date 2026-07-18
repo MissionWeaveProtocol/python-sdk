@@ -1,11 +1,13 @@
 {
-  "code": "REVISION_CONFLICT",
-  "message": "Expected revision 4 but current revision is 5",
-  "retryable": true,
+  "code": "AUTH_STALE_COORDINATOR",
+  "message": "Coordinator epoch 4 is stale; current epoch is 5",
+  "retryable": false,
   "fatal": false,
   "relatedActionId": "urn:uuid:00000000-0000-4000-8000-000000000001",
   "groupId": "urn:missionweaveprotocol:group:mission-one",
-  "expectedRevision": 4,
-  "currentRevision": 5,
+  "details": {
+    "expectedCoordinatorEpoch": 5,
+    "receivedCoordinatorEpoch": 4
+  },
   "occurredAt": "2026-07-15T00:00:02Z"
 }

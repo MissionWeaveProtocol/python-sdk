@@ -21,7 +21,9 @@ from missionweaveprotocol.gateway import (
     GroupGateway,
     UnknownCriticalExtension,
 )
+from missionweaveprotocol.ingress import CommandIngress, signing_hash
 from missionweaveprotocol.models import (
+    ActorType,
     AddMembershipPayload,
     AgentCard,
     Capability,
@@ -29,6 +31,8 @@ from missionweaveprotocol.models import (
     CommandKind,
     CreateMissionPayload,
     CreateWorkItemPayload,
+    Event,
+    Membership,
     OfferWorkItemPayload,
     OpenAgentSessionPayload,
     Principal,
@@ -67,6 +71,26 @@ MISSION_ID = "urn:missionweaveprotocol:mission:one"
 CONVERSATION_ID = f"{GROUP_ID}:mission"
 WORK_ID = "urn:missionweaveprotocol:work:resource-usage"
 SESSION_SECRET = b"x" * 32
+
+
+async def _perform_with_current_membership(core: Core, command: Command) -> Event:
+    if (
+        command.group_id is not None
+        and command.actor.type is not ActorType.SYSTEM
+        and command.kind not in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}
+    ):
+        membership = await core.query(
+            Query(
+                kind=QueryKind.MEMBERSHIP,
+                entity_id=command.actor.id,
+                group_id=command.group_id,
+                actor_type=command.actor.type,
+            )
+        )
+        if not isinstance(membership, Membership):
+            raise AssertionError("gateway fixture command lacks an authoritative Membership")
+        command = command.model_copy(update={"membership_epoch": membership.epoch})
+    return await core.perform(command)
 
 
 def _decode_base64url(value: str) -> bytes:
@@ -264,7 +288,8 @@ def _card(identity: AgentIdentity) -> AgentCard:
 
 
 async def _register_card(core: Core, card: AgentCard) -> None:
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id=(
                 f"urn:missionweaveprotocol:action:register:{card.agent_id.rsplit(':', 1)[-1]}"
@@ -274,13 +299,14 @@ async def _register_card(core: Core, card: AgentCard) -> None:
             issued_at=datetime.now(UTC),
             payload=RegisterAgentCardPayload(card=card),
             signature="registry-signature",
-        )
+        ),
     )
 
 
 async def _bootstrap_mission(core: Core, card: AgentCard) -> None:
     await _register_card(core, card)
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:create-mission",
             kind=CommandKind.CREATE_MISSION,
@@ -297,13 +323,14 @@ async def _bootstrap_mission(core: Core, card: AgentCard) -> None:
                 deadline=datetime.now(UTC) + timedelta(hours=1),
             ),
             signature="owner-signature",
-        )
+        ),
     )
 
 
 async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
     await _register_card(core, card)
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:create-usage-mission",
             kind=CommandKind.CREATE_MISSION,
@@ -321,9 +348,10 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
                 deadline=datetime.now(UTC) + timedelta(hours=1),
             ),
             signature="owner-signature",
-        )
+        ),
     )
-    session = await core.perform(
+    session = await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:open-usage-coordinator-session",
             kind=CommandKind.OPEN_AGENT_SESSION,
@@ -331,10 +359,11 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
             issued_at=datetime.now(UTC),
             payload=OpenAgentSessionPayload(agent_id=card.agent_id),
             signature="registry-signature",
-        )
+        ),
     )
     session_epoch = int(session.payload["sessionEpoch"])
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:add-usage-worker-role",
             kind=CommandKind.ADD_MEMBERSHIP,
@@ -348,7 +377,7 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
                 roles=(Role.WORKER,),
             ),
             signature="coordinator-signature",
-        )
+        ),
     )
     contract = WorkContract(
         goal="Consume exactly one model token",
@@ -357,7 +386,8 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
         budget=ResourceBudget(model_tokens=1),
         deadline=datetime.now(UTC) + timedelta(minutes=30),
     )
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:create-usage-work",
             kind=CommandKind.CREATE_WORK_ITEM,
@@ -368,9 +398,10 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
             issued_at=datetime.now(UTC),
             payload=CreateWorkItemPayload(work_item_id=WORK_ID, contract=contract),
             signature="coordinator-signature",
-        )
+        ),
     )
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:offer-usage-work",
             kind=CommandKind.OFFER_WORK_ITEM,
@@ -385,7 +416,7 @@ async def _bootstrap_resource_usage_work(core: Core, card: AgentCard) -> None:
                 selection_basis=SelectionBasis(),
             ),
             signature="coordinator-signature",
-        )
+        ),
     )
 
 
@@ -420,6 +451,77 @@ def _signed_work_command(
     return command
 
 
+def _signed_coordinator_command(
+    identity: AgentIdentity,
+    *,
+    action_number: int,
+    session_epoch: int,
+    coordinator_epoch: int,
+    cooperation_override_grant_id: str | None = None,
+    expected_revision: int | None = None,
+) -> dict[str, Any]:
+    issued_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    command: dict[str, Any] = {
+        "protocolVersion": "0.1",
+        "actionId": f"urn:missionweaveprotocol:action:coordinator:{action_number}",
+        "actor": {"type": "agent", "id": identity.agent_id},
+        "sessionEpoch": session_epoch,
+        "membershipEpoch": 1,
+        "coordinatorEpoch": coordinator_epoch,
+        "groupId": GROUP_ID,
+        "conversationId": CONVERSATION_ID,
+        "workItemId": "urn:missionweaveprotocol:work:context-only",
+        "kind": CommandKind.RENEW_COORDINATOR_LEASE.value,
+        "correlationId": "urn:missionweaveprotocol:correlation:coordinator-ingress",
+        "causedByEventId": "urn:missionweaveprotocol:event:coordinator-trigger",
+        "issuedAt": issued_at,
+        "payload": {"leaseSeconds": 600},
+    }
+    if cooperation_override_grant_id is not None:
+        command["cooperationOverrideGrantId"] = cooperation_override_grant_id
+    if expected_revision is not None:
+        command["expectedRevision"] = expected_revision
+    command["signature"] = {
+        "algorithm": "Ed25519",
+        "keyId": KEY_ID,
+        "createdAt": issued_at,
+        "value": identity.sign(canonical_bytes(command)),
+    }
+    return command
+
+
+def test_command_ingress_preserves_signed_provenance() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    document = _signed_coordinator_command(
+        identity,
+        action_number=19,
+        session_epoch=7,
+        coordinator_epoch=4,
+        cooperation_override_grant_id="urn:missionweaveprotocol:override:context-only",
+        expected_revision=0,
+    )
+    verified_hash = signing_hash(document)
+    CommandIngress().validate(document)
+
+    projected = CommandIngress.project_verified(
+        document,
+        verified_signing_hash=verified_hash,
+    )
+
+    assert projected.coordinator_epoch == 4
+    assert projected.correlation_id == document["correlationId"]
+    assert projected.caused_by_event_id == document["causedByEventId"]
+    assert projected.conversation_id == document["conversationId"]
+    assert projected.work_item_id == document["workItemId"]
+    assert projected.cooperation_override_grant_id == document["cooperationOverrideGrantId"]
+    assert projected.expected_revision == 0
+    assert projected.payload == {"leaseSeconds": 600}
+    assert projected.signature is not None
+    assert projected.signature.key_id == KEY_ID
+    assert projected.signature.value == document["signature"]["value"]
+    assert projected.verified_signing_hash == verified_hash
+
+
 async def _add_active_member(
     core: Core,
     *,
@@ -428,7 +530,8 @@ async def _add_active_member(
     visibility_after_sequence: int,
 ) -> None:
     await _register_card(core, member)
-    session = await core.perform(
+    session = await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:open-coordinator-session",
             kind=CommandKind.OPEN_AGENT_SESSION,
@@ -436,9 +539,10 @@ async def _add_active_member(
             issued_at=datetime.now(UTC),
             payload=OpenAgentSessionPayload(agent_id=coordinator.agent_id),
             signature="registry-signature",
-        )
+        ),
     )
-    await core.perform(
+    await _perform_with_current_membership(
+        core,
         Command(
             action_id="urn:missionweaveprotocol:action:add-late-member",
             kind=CommandKind.ADD_MEMBERSHIP,
@@ -454,7 +558,7 @@ async def _add_active_member(
                 visibility_after_sequence=visibility_after_sequence,
             ),
             signature="coordinator-signature",
-        )
+        ),
     )
 
 
@@ -664,6 +768,78 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
                 command=stale_command,
             )
         )
+
+
+def test_real_gateway_preserves_command_authority_and_provenance() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    core = Core(InMemoryStore())
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(core, keys)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _bootstrap_mission(core, _card(identity))
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=app,
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        socket.send_text(
+            encode_frame(
+                SubscribeFrame(
+                    subscription_id="urn:missionweaveprotocol:subscription:coordinator-ingress",
+                    groups=(GroupCursor(group_id=GROUP_ID, after_sequence=1),),
+                )
+            )
+        )
+        command = _signed_coordinator_command(
+            identity,
+            action_number=20,
+            session_epoch=welcome.session_epoch,
+            coordinator_epoch=1,
+        )
+        socket.send_text(encode_frame(CommandFrame(command=command)))
+        accepted = parse_frame(socket.receive_text())
+        assert isinstance(accepted, EventFrame)
+        assert accepted.event["kind"] == "mission.coordinator.renewed"
+        assert accepted.event["correlationId"] == command["correlationId"]
+
+        stale = _signed_coordinator_command(
+            identity,
+            action_number=21,
+            session_epoch=welcome.session_epoch,
+            coordinator_epoch=2,
+        )
+        socket.send_text(encode_frame(CommandFrame(command=stale)))
+        rejected = parse_frame(socket.receive_text())
+        assert isinstance(rejected, ErrorFrame)
+        assert rejected.error.code is ErrorCode.AUTH_STALE_COORDINATOR
+
+    events = asyncio.run(core.replay(GROUP_ID))
+    renewed = next(event for event in events if event.action_id == command["actionId"])
+    stored = asyncio.run(core.query(Query(kind=QueryKind.COMMAND, entity_id=renewed.id)))
+    assert isinstance(stored, Command)
+    assert renewed.correlation_id == command["correlationId"]
+    assert renewed.caused_by_event_id == command["causedByEventId"]
+    assert stored.coordinator_epoch == 1
+    assert stored.correlation_id == command["correlationId"]
+    assert stored.caused_by_event_id == command["causedByEventId"]
+    assert stored.conversation_id == command["conversationId"]
+    assert stored.work_item_id == command["workItemId"]
+    assert stored.cooperation_override_grant_id is None
+    assert stored.payload == {"leaseSeconds": 600}
+    assert stored.signature is not None
+    assert stored.signature.key_id == KEY_ID
+    assert stored.signature.value == command["signature"]["value"]
+    assert stored.verified_signing_hash == signing_hash(command)
+    assert renewed.command_hash == stored.verified_signing_hash
 
 
 def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering() -> None:

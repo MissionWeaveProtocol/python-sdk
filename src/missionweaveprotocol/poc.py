@@ -25,7 +25,12 @@ from websockets.asyncio.client import ClientConnection, connect
 
 from missionweaveprotocol.agent import AgentRuntime
 from missionweaveprotocol.artifacts import ArtifactManifest, LocalArtifactStore
-from missionweaveprotocol.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
+from missionweaveprotocol.auth import (
+    AgentIdentity,
+    AgentKeyRegistry,
+    SessionAuthority,
+    default_agent_key_id,
+)
 from missionweaveprotocol.canonical import canonical_bytes, canonical_hash
 from missionweaveprotocol.context import (
     ContextPackage,
@@ -91,6 +96,7 @@ from missionweaveprotocol.models import (
     ResourceBudget,
     Role,
     SelectionBasis,
+    SignatureEnvelope,
     StartWorkItemPayload,
     SubmitMissionPayload,
     SubmitWorkItemPayload,
@@ -408,6 +414,7 @@ class _Scenario:
             action_id_factory=self._next_human_action_id,
         )
         self.epochs: dict[str, int] = {}
+        self.membership_epochs: dict[tuple[str, ActorType, str], int] = {}
         self.action_number = 0
         self.checks: dict[str, bool] = {}
         self.manifests: dict[str, ArtifactManifest] = {}
@@ -446,43 +453,120 @@ class _Scenario:
         group_id: str | None = None,
         coordinator_epoch: int | None = None,
         session_epoch: int | None = None,
+        membership_epoch: int | None = None,
         action_id: str | None = None,
         expected_revision: int | None = None,
     ) -> Command:
         self.action_number += 1
         if actor.type is ActorType.AGENT and session_epoch is None:
             session_epoch = self.epochs[actor.id]
+        if (
+            membership_epoch is None
+            and group_id is not None
+            and actor.type in {ActorType.AGENT, ActorType.HUMAN}
+            and kind not in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}
+        ):
+            try:
+                membership_epoch = self.membership_epochs[(group_id, actor.type, actor.id)]
+            except KeyError as error:
+                raise AssertionError(
+                    f"POC command issuer lacks Membership epoch for {actor.id} in {group_id}"
+                ) from error
+        resolved_action_id = action_id or f"poc:action:{self.action_number:04d}"
         unsigned = Command(
-            action_id=action_id or f"poc:action:{self.action_number:04d}",
+            action_id=resolved_action_id,
             kind=kind,
             actor=actor,
             group_id=group_id,
             session_epoch=session_epoch,
+            membership_epoch=membership_epoch,
             coordinator_epoch=coordinator_epoch,
+            correlation_id=resolved_action_id,
+            conversation_id=getattr(payload, "conversation_id", None),
+            work_item_id=getattr(payload, "work_item_id", None),
             expected_revision=expected_revision,
             issued_at=self.clock(),
             payload=payload.model_dump(mode="json", by_alias=True),
             signature=None,
         )
         identity = self.identities[actor.id]
-        signature = identity.sign(canonical_bytes(unsigned.signing_payload()))
+        signature = SignatureEnvelope(
+            key_id=default_agent_key_id(actor.id),
+            created_at=unsigned.issued_at,
+            value=identity.sign(canonical_bytes(unsigned.signing_payload())),
+        )
         return unsigned.model_copy(update={"signature": signature})
 
     def resign(self, command: Command) -> Command:
         unsigned = command.model_copy(update={"signature": None})
         identity = self.identities[command.actor.id]
-        signature = identity.sign(canonical_bytes(unsigned.signing_payload()))
+        signature = SignatureEnvelope(
+            key_id=default_agent_key_id(command.actor.id),
+            created_at=unsigned.issued_at,
+            value=identity.sign(canonical_bytes(unsigned.signing_payload())),
+        )
         return unsigned.model_copy(update={"signature": signature})
 
     async def perform(self, command: Command) -> Event:
         signature = command.signature
         if signature is None or not verify_canonical(
             command.signing_payload(),
-            signature,
+            signature.value,
             self.identities[command.actor.id].public_key,
         ):
             raise AssertionError(f"invalid POC Command signature: {command.action_id}")
-        return await self.core.perform(command)
+        event = await self.core.perform(command)
+        await self._refresh_memberships(command, event)
+        return event
+
+    async def observe_control_receipt(self, command: Command, event: Event) -> None:
+        """Refresh issuer fencing state after HumanControl mutates authoritative Memberships."""
+
+        await self._refresh_memberships(command, event)
+
+    async def _refresh_memberships(self, command: Command, event: Event) -> None:
+        candidates: set[tuple[str, Principal]] = set()
+        if command.group_id is not None and command.actor.type is not ActorType.SYSTEM:
+            candidates.add((command.group_id, command.actor))
+        if command.kind in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}:
+            payload = command.payload
+            group_id = payload.get("groupId")
+            coordinator_id = payload.get("coordinatorId")
+            if isinstance(group_id, str) and isinstance(coordinator_id, str):
+                candidates.add((group_id, command.actor))
+                candidates.add((group_id, Principal.agent(coordinator_id)))
+        elif command.kind is CommandKind.CREATE_CHILD_MISSION:
+            child_group_id = command.payload.get("groupId")
+            coordinator_id = command.payload.get("coordinatorId")
+            if isinstance(child_group_id, str) and isinstance(coordinator_id, str):
+                candidates.add((child_group_id, command.actor))
+                candidates.add((child_group_id, Principal.agent(coordinator_id)))
+        elif command.kind in {CommandKind.ADD_MEMBERSHIP, CommandKind.END_MEMBERSHIP}:
+            principal = command.payload.get("principal")
+            if command.group_id is not None and isinstance(principal, dict):
+                candidates.add((command.group_id, Principal.model_validate(principal)))
+        elif command.kind is CommandKind.REPLACE_COORDINATOR:
+            previous = event.payload.get("previousCoordinatorId")
+            replacement = event.payload.get("coordinatorId")
+            if command.group_id is not None:
+                if isinstance(previous, str):
+                    candidates.add((command.group_id, Principal.agent(previous)))
+                if isinstance(replacement, str):
+                    candidates.add((command.group_id, Principal.agent(replacement)))
+
+        for group_id, membership_principal in candidates:
+            membership = await self.core.query(
+                Query(
+                    kind=QueryKind.MEMBERSHIP,
+                    entity_id=membership_principal.id,
+                    group_id=group_id,
+                    actor_type=membership_principal.type,
+                )
+            )
+            if isinstance(membership, Membership):
+                self.membership_epochs[
+                    (group_id, membership_principal.type, membership_principal.id)
+                ] = membership.epoch
 
     async def register(self, agent_id: str, capabilities: tuple[str, ...]) -> None:
         identity = self.identities[agent_id]
@@ -994,6 +1078,10 @@ async def _run(root: Path) -> POCReport:
         coordinator_lease_seconds=86_400,
     )
     root_auth_receipt, root_cli_receipt = await asyncio.gather(root_auth, root_cli)
+    await asyncio.gather(
+        scenario.observe_control_receipt(root_auth_receipt.command, root_auth_receipt.event),
+        scenario.observe_control_receipt(root_cli_receipt.command, root_cli_receipt.event),
+    )
     scenario.prove(
         "human_control_created_signed_roots",
         scenario.human_identity.verify(root_auth_receipt.command)
@@ -1145,6 +1233,10 @@ async def _run(root: Path) -> POCReport:
         MISSION_CLI,
         COORD_CLI_REPLACEMENT,
         lease_seconds=86_400,
+    )
+    await scenario.observe_control_receipt(
+        replacement_receipt.command,
+        replacement_receipt.event,
     )
     scenario.prove(
         "human_control_signed_coordinator_replacement",
@@ -2509,8 +2601,10 @@ async def _run(root: Path) -> POCReport:
         == auth_approval_receipt.event.command_hash
         and canonical_hash(accepted_cli_approval.signing_payload())
         == cli_approval_receipt.event.command_hash
-        and auth_approval_result.signature == accepted_auth_approval.signature
-        and cli_approval_result.signature == accepted_cli_approval.signature
+        and accepted_auth_approval.signature is not None
+        and accepted_cli_approval.signature is not None
+        and auth_approval_result.signature == accepted_auth_approval.signature.value
+        and cli_approval_result.signature == accepted_cli_approval.signature.value
         and auth_approval_result.artifact_hashes == final_auth_hashes
         and cli_approval_result.artifact_hashes == cli_hashes,
     )
@@ -2546,8 +2640,10 @@ async def _run(root: Path) -> POCReport:
     final_security_events = await scenario.core.replay(GROUP_SECURITY)
     auth_approval_signature = accepted_auth_approval.signature
     cli_approval_signature = accepted_cli_approval.signature
-    if not isinstance(auth_approval_signature, str) or not isinstance(cli_approval_signature, str):
+    if auth_approval_signature is None or cli_approval_signature is None:
         raise AssertionError("accepted human Approvals are missing signatures")
+    auth_approval_signature_value = auth_approval_signature.value
+    cli_approval_signature_value = cli_approval_signature.value
     auth_signed_command_hash = auth_approval_receipt.event.command_hash
     cli_signed_command_hash = cli_approval_receipt.event.command_hash
     auth_approval_event_id = auth_approval_receipt.event.id
@@ -2563,7 +2659,7 @@ async def _run(root: Path) -> POCReport:
         details={
             "approvalId": auth_approval_result.id,
             "approvalEventId": auth_approval_event_id,
-            "approvalSignature": auth_approval_signature,
+            "approvalSignature": auth_approval_signature_value,
             "artifactHashes": list(auth_approval_result.artifact_hashes),
             "signatureVerified": scenario.human_identity.verify(accepted_auth_approval),
             "signedCommandHash": auth_signed_command_hash,
@@ -2577,7 +2673,7 @@ async def _run(root: Path) -> POCReport:
         details={
             "approvalId": cli_approval_result.id,
             "approvalEventId": cli_approval_event_id,
-            "approvalSignature": cli_approval_signature,
+            "approvalSignature": cli_approval_signature_value,
             "artifactHashes": list(cli_approval_result.artifact_hashes),
             "signatureVerified": scenario.human_identity.verify(accepted_cli_approval),
             "signedCommandHash": cli_signed_command_hash,
@@ -2645,8 +2741,8 @@ async def _run(root: Path) -> POCReport:
         and cli_policy_entry.details["signatureVerified"] is True
         and auth_policy_entry.details["signedCommandHash"] == auth_signed_command_hash
         and cli_policy_entry.details["signedCommandHash"] == cli_signed_command_hash
-        and auth_policy_entry.details["approvalSignature"] == auth_approval_signature
-        and cli_policy_entry.details["approvalSignature"] == cli_approval_signature
+        and auth_policy_entry.details["approvalSignature"] == auth_approval_signature_value
+        and cli_policy_entry.details["approvalSignature"] == cli_approval_signature_value
         and auth_policy_entry.details["approvalEventId"] in auth_snapshot.event_ids
         and cli_policy_entry.details["approvalEventId"] in cli_snapshot.event_ids,
     )

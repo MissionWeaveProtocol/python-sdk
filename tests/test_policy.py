@@ -22,6 +22,7 @@ from missionweaveprotocol.models import (
     QueryKind,
     ResourceBudget,
     Role,
+    SignatureEnvelope,
     WorkContract,
     WorkItem,
     WorkItemStatus,
@@ -490,7 +491,15 @@ def execution_state(
         payload=approval_payload,
     )
     signature = sign_canonical(unsigned.signing_payload(), private_key)
-    command = unsigned.model_copy(update={"signature": signature})
+    command = unsigned.model_copy(
+        update={
+            "signature": SignatureEnvelope(
+                key_id="human:owner:approval-key",
+                created_at=NOW,
+                value=signature,
+            )
+        }
+    )
     approval = ExecutionApproval(
         id=approval_payload.approval_id,
         mission_id=mission.id,

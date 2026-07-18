@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "0.1",
+  "actionId": "urn:uuid:10000000-0000-4000-8000-000000000101",
+  "actor": {"type": "human", "id": "urn:missionweaveprotocol:human:mission-owner"},
+  "sessionEpoch": 1,
+  "groupId": "urn:missionweaveprotocol:group:new-mission",
+  "kind": "mission.create",
+  "correlationId": "urn:uuid:10000000-0000-4000-8000-000000000102",
+  "issuedAt": "2026-07-15T00:00:00Z",
+  "payload": {
+    "missionId": "urn:missionweaveprotocol:mission:new-mission"
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:mission-owner",
+    "createdAt": "2026-07-15T00:00:00Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

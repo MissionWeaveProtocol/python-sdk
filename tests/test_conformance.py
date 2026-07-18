@@ -11,7 +11,7 @@ def test_repository_conformance_manifest() -> None:
     report = run_manifest(root)
 
     failures = [result for result in report.results if not result.passed]
-    assert len(report.results) == 43
+    assert len(report.results) == 52
     assert not failures, failures
 
 

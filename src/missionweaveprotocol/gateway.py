@@ -11,7 +11,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 from uuid import uuid4
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -34,6 +34,7 @@ from missionweaveprotocol.crypto import (
     sign_canonical,
     verify_canonical,
 )
+from missionweaveprotocol.ingress import CommandIngress, signing_document, signing_hash
 from missionweaveprotocol.models import (
     ActorType,
     Command,
@@ -45,6 +46,7 @@ from missionweaveprotocol.models import (
     Principal,
     Query,
     QueryKind,
+    SignatureEnvelope,
 )
 from missionweaveprotocol.offline import (
     OFFLINE_EXECUTION_EXTENSION,
@@ -155,6 +157,7 @@ class CoreGatewayAdapter:
         self._core = core
         self._command_keys = command_keys
         self._schemas = SchemaCatalog(schema_root)
+        self._ingress = CommandIngress(self._schemas)
         self._authority_key_id = authority_key_id
         self._authority_private_key = authority_private_key or generate_keypair()[0]
         self._clock = clock or (lambda: datetime.now(UTC))
@@ -178,19 +181,24 @@ class CoreGatewayAdapter:
                 "gateway and authoritative Core session epochs diverged "
                 f"(Core={current}, grant={session_epoch})"
             )
+        issued_at = self._now()
         event = await self._core.perform(
             Command(
                 action_id=f"urn:uuid:{uuid4()}",
                 kind=CommandKind.OPEN_AGENT_SESSION,
                 actor=Principal.system("urn:missionweaveprotocol:service:group-gateway"),
-                issued_at=self._now(),
+                issued_at=issued_at,
                 payload=cast(
                     dict[str, JsonValue],
                     OpenAgentSessionPayload(agent_id=agent_id).model_dump(
                         mode="json", by_alias=True
                     ),
                 ),
-                signature="gateway-session-authority",
+                signature=SignatureEnvelope(
+                    key_id=self._authority_key_id,
+                    created_at=issued_at,
+                    value="gateway-session-authority",
+                ),
             )
         )
         activated_epoch = event.payload.get("sessionEpoch")
@@ -208,10 +216,23 @@ class CoreGatewayAdapter:
         command: dict[str, JsonValue],
     ) -> dict[str, JsonValue]:
         self._validate_command_schema(command)
-        self._verify_command_identity(command, actor, session_epoch)
+        verified_signing_hash = self._verify_command_identity(command, actor, session_epoch)
         await self._verify_command_membership(command, actor)
         self._verify_command_extensions(command)
-        parsed = self._translate_command(command)
+        try:
+            parsed = self._ingress.project_verified(
+                command,
+                verified_signing_hash=verified_signing_hash,
+            )
+        except (KeyError, ValueError, PydanticValidationError) as error:
+            raise InvalidCommand(
+                "normative Command cannot be executed by the reference Core",
+                errors=(
+                    error.errors(include_url=False)
+                    if isinstance(error, PydanticValidationError)
+                    else str(error)
+                ),
+            ) from error
         event = await self._core.perform(parsed)
         return self._translate_event(event)
 
@@ -241,7 +262,7 @@ class CoreGatewayAdapter:
 
     def _validate_command_schema(self, command: dict[str, JsonValue]) -> None:
         try:
-            self._schemas.validate("command.schema.json", command)
+            self._ingress.validate(command)
         except JSONSchemaValidationError as error:
             raise GatewaySchemaError(
                 "Command does not conform to command.schema.json",
@@ -256,7 +277,7 @@ class CoreGatewayAdapter:
         command: dict[str, JsonValue],
         actor: str,
         session_epoch: int,
-    ) -> None:
+    ) -> str:
         command_actor = command.get("actor")
         if not isinstance(command_actor, dict):
             raise GatewaySchemaError("Command actor must be an object")
@@ -279,12 +300,12 @@ class CoreGatewayAdapter:
         ):
             raise GatewaySchemaError("Command signature must be an Ed25519 signature object")
         created_at = _parse_timestamp(created_at_value, field="Command signature createdAt")
-        signing_payload = dict(command)
-        del signing_payload["signature"]
+        signing_payload = signing_document(command)
         public_key = self._command_keys.resolve(actor, key_id, at=created_at)
         self._command_keys.resolve(actor, key_id, at=self._now())
         if not verify_canonical(signing_payload, signature_value, public_key):
             raise AuthenticationError("durable Command signature is invalid")
+        return signing_hash(command)
 
     async def _verify_command_membership(
         self,
@@ -331,55 +352,6 @@ class CoreGatewayAdapter:
             if critical and supported_version != version:
                 raise UnknownCriticalExtension(profile_uri, version, supported_version)
 
-    def _translate_command(self, command: dict[str, JsonValue]) -> Command:
-        try:
-            kind = CommandKind(str(command["kind"]))
-        except (KeyError, ValueError) as error:
-            raise InvalidCommand(
-                "the reference Core does not implement this normative Command kind",
-                kind=command.get("kind"),
-            ) from error
-
-        payload_value = command.get("payload")
-        if not isinstance(payload_value, dict):
-            raise GatewaySchemaError("Command payload must be an object")
-        payload = dict(payload_value)
-        if kind is CommandKind.POST_MESSAGE:
-            conversation_id = command.get("conversationId")
-            if conversation_id is not None:
-                payload.setdefault("conversationId", conversation_id)
-            payload.pop("authority", None)
-
-        expected_revision = command.get("expectedRevision")
-        if expected_revision == 0:
-            expected_revision = None
-        signature = cast(dict[str, JsonValue], command["signature"])
-        candidate: dict[str, Any] = {
-            "protocolVersion": command["protocolVersion"],
-            "actionId": command["actionId"],
-            "kind": kind,
-            "actor": command["actor"],
-            "groupId": command["groupId"],
-            "sessionEpoch": command["sessionEpoch"],
-            "membershipEpoch": command["membershipEpoch"],
-            "issuedAt": command["issuedAt"],
-            "payload": payload,
-            "extensions": command.get("extensions", {}),
-            "signature": signature["value"],
-        }
-        if expected_revision is not None:
-            candidate["expectedRevision"] = expected_revision
-        coordinator_epoch = payload.pop("coordinatorEpoch", None)
-        if coordinator_epoch is not None:
-            candidate["coordinatorEpoch"] = coordinator_epoch
-        try:
-            return Command.model_validate(candidate)
-        except PydanticValidationError as error:
-            raise InvalidCommand(
-                "normative Command cannot be executed by the reference Core",
-                errors=error.errors(include_url=False),
-            ) from error
-
     def _translate_event(self, event: Event) -> dict[str, JsonValue]:
         if event.group_id is None or event.sequence is None:
             raise RuntimeError("only Group Events can be delivered over a subscription")
@@ -396,7 +368,10 @@ class CoreGatewayAdapter:
                 "type": "command",
                 "id": self._identifier(event.action_id, namespace="action"),
             },
-            "correlationId": self._identifier(event.action_id, namespace="correlation"),
+            "correlationId": self._identifier(
+                event.correlation_id or event.action_id,
+                namespace="correlation",
+            ),
             "occurredAt": occurred_at,
             "payload": event.payload,
             "acceptedBy": {
@@ -746,7 +721,7 @@ def _wire_error_code(error: Exception) -> WireErrorCode:
             "authorization_denied": WireErrorCode.AUTH_FORBIDDEN,
             "action_id_collision": WireErrorCode.ACTION_ID_COLLISION,
             "stale_session_epoch": WireErrorCode.AUTH_STALE_SESSION,
-            "stale_coordinator_epoch": WireErrorCode.MEMBERSHIP_STALE,
+            "stale_coordinator_epoch": WireErrorCode.AUTH_STALE_COORDINATOR,
             "stale_ownership_epoch": WireErrorCode.WORK_STALE_OWNERSHIP,
             "lease_expired": WireErrorCode.WORK_LEASE_EXPIRED,
             "invalid_transition": WireErrorCode.INVALID_STATE_TRANSITION,

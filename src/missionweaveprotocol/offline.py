@@ -22,6 +22,7 @@ from .models import (
     Principal,
     ProtocolModel,
     ResourceUsage,
+    SignatureEnvelope,
     WorkItem,
     WorkItemStatus,
 )
@@ -259,8 +260,18 @@ class OfflineExecutionPolicy:
                 binding.model_dump(mode="json", by_alias=True),
             ),
         )
-        unsigned = command.model_copy(update={"extensions": extensions, "signature": None})
-        signature = self._identity.sign(canonical_bytes(unsigned.signing_payload()))
+        unsigned = command.model_copy(
+            update={
+                "extensions": extensions,
+                "signature": None,
+                "verified_signing_hash": None,
+            }
+        )
+        signature = SignatureEnvelope(
+            key_id=default_agent_key_id(self._identity.agent_id),
+            created_at=unsigned.issued_at,
+            value=self._identity.sign(canonical_bytes(unsigned.signing_payload())),
+        )
         return unsigned.model_copy(update={"signature": signature})
 
     def _require_current_window(self, now: datetime) -> None:
@@ -326,9 +337,14 @@ def rebase_offline_command(
             "issued_at": reconciliation_time,
             "payload": payload,
             "signature": None,
+            "verified_signing_hash": None,
         }
     )
-    signature = identity.sign(canonical_bytes(unsigned.signing_payload()))
+    signature = SignatureEnvelope(
+        key_id=default_agent_key_id(identity.agent_id),
+        created_at=reconciliation_time,
+        value=identity.sign(canonical_bytes(unsigned.signing_payload())),
+    )
     return unsigned.model_copy(update={"signature": signature})
 
 
