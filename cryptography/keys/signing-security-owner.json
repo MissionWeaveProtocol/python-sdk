@@ -1,0 +1,7 @@
+{
+  "testOnly": true,
+  "keyId": "urn:missionweaveprotocol:key:crypto-vector-security-owner",
+  "algorithm": "Ed25519",
+  "seed": "CvdZ_7tfOnPFm00uMq_O_dmvLjNdJ6RN8zsz7El4Q0k",
+  "publicKey": "3QQY3TXWIo9C5An8Tb25kEfjCw_Qa5zJ2JO1H3BD_rk"
+}

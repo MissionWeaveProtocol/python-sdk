@@ -1,0 +1,1702 @@
+{
+  "$schema": "https://missionweaveprotocol.dev/cryptography/0.1/manifest.schema.json",
+  "manifestVersion": 1,
+  "protocolVersion": "0.1",
+  "profileId": "missionweaveprotocol.signed-document-verification.v0.1",
+  "semanticStages": [
+    "parse",
+    "schema",
+    "signature-envelope",
+    "key-resolution",
+    "canonicalization",
+    "signature",
+    "complete"
+  ],
+  "fixtureSchemas": {
+    "registry": "cryptography/registry-fixture.schema.json",
+    "signingKey": "cryptography/signing-key-fixture.schema.json"
+  },
+  "profiles": [
+    {
+      "profileId": "agent-card",
+      "schema": "schemas/agent-card.schema.json",
+      "protectedTimePointer": "/issuedAt",
+      "expectedSigner": {
+        "rule": "service-principal"
+      }
+    },
+    {
+      "profileId": "approval",
+      "schema": "schemas/approval.schema.json",
+      "protectedTimePointer": "/occurredAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/approver"
+      }
+    },
+    {
+      "profileId": "artifact",
+      "schema": "schemas/artifact.schema.json",
+      "protectedTimePointer": "/createdAt",
+      "expectedSigner": {
+        "rule": "agent-id",
+        "idPointer": "/producer/agentId"
+      }
+    },
+    {
+      "profileId": "command",
+      "schema": "schemas/command.schema.json",
+      "protectedTimePointer": "/issuedAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/actor"
+      }
+    },
+    {
+      "profileId": "context-package",
+      "schema": "schemas/context-package.schema.json",
+      "protectedTimePointer": "/generatedAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/generatedBy"
+      }
+    },
+    {
+      "profileId": "event",
+      "schema": "schemas/event.schema.json",
+      "protectedTimePointer": "/occurredAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/acceptedBy"
+      }
+    },
+    {
+      "profileId": "evidence",
+      "schema": "schemas/evidence.schema.json",
+      "protectedTimePointer": "/createdAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/generatedBy"
+      }
+    },
+    {
+      "profileId": "extension-profile",
+      "schema": "schemas/extension-profile.schema.json",
+      "protectedTimePointer": "/approvedAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/approvedBy"
+      }
+    },
+    {
+      "profileId": "group-snapshot",
+      "schema": "schemas/group-snapshot.schema.json",
+      "protectedTimePointer": "/createdAt",
+      "expectedSigner": {
+        "rule": "principal-object",
+        "pointer": "/createdBy"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "cryptography/keys/registry-key-alias.json",
+      "byteLength": 3413,
+      "sha256": "sha256:55c7b0363f37d6b357fe6f08d7838809141dde3b93390821b00982ee1163a554"
+    },
+    {
+      "path": "cryptography/keys/registry-key-not-yet-valid.json",
+      "byteLength": 2871,
+      "sha256": "sha256:25e1406976db4892c544254f76bf30884951f259145b73ec78a98ac3591100d5"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-cross-principal-reuse.json",
+      "byteLength": 3416,
+      "sha256": "sha256:2664b31c0116a87e430af8c12bcaaa6c810cae9166860c5af82b5c13bba766db"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-identity.json",
+      "byteLength": 2876,
+      "sha256": "sha256:839dbc56dde018a82ef0fee1cd8205d408a3d0a0ef7c95cc3181077ab776c949"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-mixed-order.json",
+      "byteLength": 2876,
+      "sha256": "sha256:f6d99da450cf509ad9c6534882d7d694b97d207672ede59df2a2619e2aa214d7"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-negative-zero.json",
+      "byteLength": 2876,
+      "sha256": "sha256:226f967075284050adf3309ea22838ebd4fee23bbaefd0956afaf5d13bf270bd"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-noncanonical.json",
+      "byteLength": 2876,
+      "sha256": "sha256:0b08fb99e6c5f1fca0e86df255ce12922f09fae2eb0e6b12031544bc97f63d93"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-nonzero-unused-pad-bits.json",
+      "byteLength": 2876,
+      "sha256": "sha256:d3c1eeafe3356c3e8f7c1ff2a637548560e293597e9a399a57d478e3b8c66265"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-off-curve.json",
+      "byteLength": 2876,
+      "sha256": "sha256:a3a295493a62f92c0289e2a2aee138fd7594796281ef99f04f9bd4eecde0350e"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-padded.json",
+      "byteLength": 2877,
+      "sha256": "sha256:94194b8e25deceff4e1cdddb852720098e2c95f12c3eee3b8d090881c6932820"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-rebinding.json",
+      "byteLength": 3407,
+      "sha256": "sha256:d0527b2a0e4e408f6d9cdda30b7886dd2aa5d66fa8c7b0a78125a142ec991d66"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-small-order.json",
+      "byteLength": 2876,
+      "sha256": "sha256:742fd75ad82925ecaa98b9ac8c0a4df10b9ebcd6e1156523b844a695a76ba483"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-wrong-length.json",
+      "byteLength": 2875,
+      "sha256": "sha256:b1f93eba1391bee356fdf2b00e4d7a6b2dd057ceb29e41d531366f76316d7520"
+    },
+    {
+      "path": "cryptography/keys/registry-public-key-y-equals-p.json",
+      "byteLength": 2876,
+      "sha256": "sha256:27cef269d2811329acb9dab4469d7c25c6dd4c23b70ba5244d9110db1bf1e89e"
+    },
+    {
+      "path": "cryptography/keys/registry-revoked-at-equality.json",
+      "byteLength": 3021,
+      "sha256": "sha256:c41594bde6aee7814cca44e8936c6769f1732f361f1c6fdb8f890419f5e595a1"
+    },
+    {
+      "path": "cryptography/keys/registry-timestamp-casing-and-offset-bounds.json",
+      "byteLength": 2881,
+      "sha256": "sha256:93d6928ee3874431812b585d1e1b968eac5d72463fc9dbad822d9acb6ce4fa55"
+    },
+    {
+      "path": "cryptography/keys/registry-timestamp-fractional-precision.json",
+      "byteLength": 2896,
+      "sha256": "sha256:353b63802b55861f8c96d2c745699e732fdc5668cc5d5ada79b5df096bd95e01"
+    },
+    {
+      "path": "cryptography/keys/registry-valid-until-equality.json",
+      "byteLength": 2881,
+      "sha256": "sha256:41448f8e6d6ae0369b9cebfc99808fd220d5e223978218d4613d31060e5a9aab"
+    },
+    {
+      "path": "cryptography/keys/registry-valid.json",
+      "byteLength": 2876,
+      "sha256": "sha256:008b08cbe85f95615d6034b91ed0ad0043a41582e024b0a0cf852894a43fcff9"
+    },
+    {
+      "path": "cryptography/keys/registry-wrong-principal.json",
+      "byteLength": 2873,
+      "sha256": "sha256:8da7afe0ef8c8e307116c886c3c9e6a5fd5c12cb583808c1ad8ecee3de6798c0"
+    },
+    {
+      "path": "cryptography/keys/signing-coordinator.json",
+      "byteLength": 235,
+      "sha256": "sha256:17e0e460bdd46697bdd188a2275ae5538f305176cb7fc71ab2227520adfba111"
+    },
+    {
+      "path": "cryptography/keys/signing-developer-one.json",
+      "byteLength": 239,
+      "sha256": "sha256:00439ce939190a4dfcb396b6eeae0230459da31042228576c6af0d7ab56972ac"
+    },
+    {
+      "path": "cryptography/keys/signing-group-authority.json",
+      "byteLength": 241,
+      "sha256": "sha256:440c2b08c31e1c21536752418d17e1671679e87eb36ebd30b9320b09be5d0c91"
+    },
+    {
+      "path": "cryptography/keys/signing-mission-owner.json",
+      "byteLength": 239,
+      "sha256": "sha256:ba2db2de10e53be628bed8b340497454bf59e49f6e74e63fdea60e177a882000"
+    },
+    {
+      "path": "cryptography/keys/signing-organization-registry.json",
+      "byteLength": 247,
+      "sha256": "sha256:e7e0d225943819b0f34a8b867231d1892261b8d62aaabb3b1226e64bbac253b7"
+    },
+    {
+      "path": "cryptography/keys/signing-security-owner.json",
+      "byteLength": 240,
+      "sha256": "sha256:4491927fd297ed3119dea50f788f97ecb82caf4eebbd908fd91af3bc7eae84ba"
+    },
+    {
+      "path": "cryptography/keys/signing-test-reviewer.json",
+      "byteLength": 239,
+      "sha256": "sha256:411afa346357f2ab84255d1e0f93de22519d937e5d8638cee335da63b8f000c3"
+    },
+    {
+      "path": "cryptography/manifest.schema.json",
+      "byteLength": 14795,
+      "sha256": "sha256:8ce33b8d69e63bc0d905ce833043aa13cac84fe56980b2e19c6804fd70cab16e"
+    },
+    {
+      "path": "cryptography/registry-fixture.schema.json",
+      "byteLength": 2575,
+      "sha256": "sha256:e3e7598389fd2d07985858f8dfec4b66d680ea00e7ff5f0a2ec13bba59632ba6"
+    },
+    {
+      "path": "cryptography/signing-key-fixture.schema.json",
+      "byteLength": 874,
+      "sha256": "sha256:9d0d326a8adebab4e2e818c6e18ad0f8ab673e30066ac0292bb91897b4314dc6"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/agent-card.signing.jcs",
+      "byteLength": 1245,
+      "sha256": "sha256:5817bf9d0bed81a66be6e92f17b1a72ec23de15e73d130c4b12f6132c3641fc1"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/approval.signing.jcs",
+      "byteLength": 562,
+      "sha256": "sha256:495117f78fc1f442b5f02adea515c5a1c17b582296f171de8b5e9dd3f0579285"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/artifact.signing.jcs",
+      "byteLength": 1022,
+      "sha256": "sha256:6837c1240131f277dbad08baf04c546d51d6f7633bb9a7993eaa8f0f8b1f18d0"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/command-lowercase-t-alternate-serialization.signing.jcs",
+      "byteLength": 1175,
+      "sha256": "sha256:dcebc26f95fd2168620e4391a53a94b22f4b7161ba081b52e64cfc1a74baf8bf"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/command-timestamp-fractional-precision.signing.jcs",
+      "byteLength": 1195,
+      "sha256": "sha256:d079aacfe615d92853bf0cabd51ff208ba2f92d9931bbce1f6c2aa8dd90af729"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/command.signing.jcs",
+      "byteLength": 1175,
+      "sha256": "sha256:6655c5d67ae3ecc19a4ed04bda7f1372aeaafc7adf939a77715de96ef2100695"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/context-package.signing.jcs",
+      "byteLength": 1058,
+      "sha256": "sha256:1875f36ffe7688512b3441d4381140336cc9a97a4a3250e5e4470f449c16bcf2"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/event.signing.jcs",
+      "byteLength": 776,
+      "sha256": "sha256:b13e0911e40c702f4dfe6f9a23e162ee8d6312c66b712efdbce455762bd7a369"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/evidence.signing.jcs",
+      "byteLength": 786,
+      "sha256": "sha256:9caeb847c295014cfc99ee0ef63c28f85237c3bb040b66e1b529762d2197ca4a"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/extension-profile.signing.jcs",
+      "byteLength": 648,
+      "sha256": "sha256:aa9a0f41efd74f9bad47605f25487025e1d36f117d014c192d9a62645296e8c9"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/group-snapshot.signing.jcs",
+      "byteLength": 747,
+      "sha256": "sha256:061f1d6c35ce4ab44c9c7432f016f241cd0c4d10695deffde7ff0a534c02c47b"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/rfc8785-section-3.2.2-input.json",
+      "byteLength": 197,
+      "sha256": "sha256:0e8b4f7e00b5b54be26d258337579c2c9017959e264e64a8ffd6a600d8fda3da"
+    },
+    {
+      "path": "cryptography/vectors/canonicalization/rfc8785-section-3.2.2.jcs",
+      "byteLength": 118,
+      "sha256": "sha256:2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/agent-card-wrong-signer.json",
+      "byteLength": 1768,
+      "sha256": "sha256:b130200c3849318ce419b549d15cb23cc431f1ea721adcb4cfd7e59d44f45437"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/artifact-wrong-signer.json",
+      "byteLength": 1480,
+      "sha256": "sha256:a60168049d51df731947c52bac502265d45695673b6c4669222a7dcd8bb67534"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-created-at-mismatch.json",
+      "byteLength": 1769,
+      "sha256": "sha256:7a5e3bf7e3cfb9089e0145dbdf5ed7604914a047d60c7c9985bb2df36be7a928"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-duplicate-decoded-member.json",
+      "byteLength": 1958,
+      "sha256": "sha256:a99d043a1612e6584b2c0636aa224a3dccab7e16761f760e201e04b9d3176c66"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-extension-signature-tamper.json",
+      "byteLength": 1766,
+      "sha256": "sha256:70f8883f4ab6a197b30e5882ce1a50783fe5f0835348e56a6135fc681ed90397"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-invalid-utf8.bin",
+      "byteLength": 1769,
+      "sha256": "sha256:13006b14026cdeeee4f0922f69fef30094a4416fe08e6fbf5c0386f37dbd5f82"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-key-alias.json",
+      "byteLength": 1775,
+      "sha256": "sha256:a8aa5df1ed3bd955344e0414000b82574e04028813b50fbbb277ee24ed28524a"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-leap-second.json",
+      "byteLength": 1769,
+      "sha256": "sha256:52f2f07aef6d1e22b3da21214d0d625905c2a69c084eefb497fa1dbdcc3aed97"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-nonzero-unused-pad-bits.json",
+      "byteLength": 1769,
+      "sha256": "sha256:bbc31232ddcaade46105dbecc7e8fb81bdfc465929176b7bcefc893d6f5fd69e"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-number-1e400.json",
+      "byteLength": 1769,
+      "sha256": "sha256:b8d86af6572a8f569ad62012592a84d0b40234e5ba5e6d60ed4f55b81f2c9569"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-padded-signature.json",
+      "byteLength": 1771,
+      "sha256": "sha256:c1f85951bb869ba7c50cc8e23ff46b33912262ecff64488414d7d33f0bc50dbc"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-payload-signature-tamper.json",
+      "byteLength": 1766,
+      "sha256": "sha256:158c5da824550cb5be89d80d974fdb8a2bcac888a3baf67b225e22037bc3eb12"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-payload-tamper.json",
+      "byteLength": 1769,
+      "sha256": "sha256:de34c1a22d3444b3f8e0215872a78eff6f5126169e42f607dcb153fac1dba68e"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-protected-time-not-utc-z.json",
+      "byteLength": 1779,
+      "sha256": "sha256:b16a896efa475357086d1777e6821494ca18b4ed5ce70db6c65f1ebdaa8f51fd"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-mixed-order.json",
+      "byteLength": 1769,
+      "sha256": "sha256:54a81359b25ae0ed028f6086985f69802981646a02575fc092d546afa531583a"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-negative-zero.json",
+      "byteLength": 1769,
+      "sha256": "sha256:9101c44a1ff15fd95c7ee5a12c70d8bb5dca7413e445c44158c7c24d611bb87f"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-noncanonical.json",
+      "byteLength": 1769,
+      "sha256": "sha256:c21ffe2ac0f35fbfe8cfcdc67c63526b48dc7a0e97e86bb368e812269bed536d"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-off-curve.json",
+      "byteLength": 1769,
+      "sha256": "sha256:72a9e97fc4fbc44b4245edb626f7d2cf3de81a9a43a39920a5c9e7f520f5c583"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-small-order.json",
+      "byteLength": 1769,
+      "sha256": "sha256:bfb69ca12c9b9fa25853305d13e2c6cd8c3541e5d474bc8821381b2df341093b"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-r-y-equals-p.json",
+      "byteLength": 1769,
+      "sha256": "sha256:5e8b767b46d943b6e3e9b6075dd25de866ffbd3670ebc4f4a259d5f602967220"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-s-out-of-range.json",
+      "byteLength": 1769,
+      "sha256": "sha256:27d7ed9f9d6f3eef76ddce51bbcfc8669cedb5da6123228e08fc6416aa6cdd93"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-signature-wrong-length.json",
+      "byteLength": 1767,
+      "sha256": "sha256:6f97cf6ae5d92100dc4bd1fa3212f566e41ec5884aecf069fa942c82870ec85d"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-trailing-data.json",
+      "byteLength": 1772,
+      "sha256": "sha256:c35f0e5871b44945a00cdddd20db6edd0a25933fc43fd34c82c0f525a5927b79"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-unknown-key.json",
+      "byteLength": 1767,
+      "sha256": "sha256:3836bd167372588652fd40980d133f2deba94ceeb7e1a65556e8117bf6c3df96"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-unknown-local-offset.json",
+      "byteLength": 1779,
+      "sha256": "sha256:baef08be04331a1f96a190be79d2c822000fc4e2dad7c65755b4e7dc25b93d7f"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-unpaired-surrogate.json",
+      "byteLength": 1841,
+      "sha256": "sha256:f9bd0ccdb0b44382a297e8eb6650c60ef69be3db270bc21ae48778626f1a4226"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-unsupported-algorithm.json",
+      "byteLength": 1767,
+      "sha256": "sha256:ed4a2369605b3ab81d283dd5a4570aca26053ab49282c3b5a2fa2b1ddbfa0e6d"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-utf8-bom.json",
+      "byteLength": 1772,
+      "sha256": "sha256:6e02785d17dae91eced662bfc578e6b6ea7a08c824d2a5b1cb3f1d05f774abca"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+      "byteLength": 1769,
+      "sha256": "sha256:484b1a22cff2a77e97aa1f1683884f2dd183f7e7ff3796448fee0a4cb01b4f47"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/invalid/command-year-zero.json",
+      "byteLength": 1769,
+      "sha256": "sha256:d269e13c8614123b3781d7a7a4ff684d0bca1511727b951698b06b07f0649e0a"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/agent-card.json",
+      "byteLength": 1780,
+      "sha256": "sha256:6108f4a5810880279d0026b324e6f93bb7131687ee7659877bce7f256c1424aa"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/approval.json",
+      "byteLength": 901,
+      "sha256": "sha256:fe98eef026f9c2922b7506908158ecf07b02ee254cfc09b7df62f3aba2892a35"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/artifact.json",
+      "byteLength": 1484,
+      "sha256": "sha256:5eb459268f0081a2bb8fd54ed9a019720915b5dc99e32998351bf959aa6de64b"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/command-alternate-json-serialization.json",
+      "byteLength": 1445,
+      "sha256": "sha256:2016631b39b76cd3b9643a024bef264ec7369fef3e4f004065e8086403ab5297"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/command-timestamp-fractional-precision.json",
+      "byteLength": 1809,
+      "sha256": "sha256:d9780a4ab15e9c86ae40945d45eb73800367876fb4bf17ab558c2eb0cb3a8d7a"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/command.json",
+      "byteLength": 1769,
+      "sha256": "sha256:f1a92e62041b611c50851466282c21b82f7ed155c454ea37725c5107437f2426"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/context-package.json",
+      "byteLength": 1505,
+      "sha256": "sha256:c9dc1579fac94e1d931807b166faad91e24c8485b87d67364602991058e11e5d"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/event.json",
+      "byteLength": 1162,
+      "sha256": "sha256:7edcaf49bcfbd467f568e31e0b5a5244b2b27beec8b1c07e1538b55dd3a22fda"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/evidence.json",
+      "byteLength": 1171,
+      "sha256": "sha256:21413333cb6e39bb80d436784d7e4f65c8649f795e222498ac23b917646ce6b2"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/extension-profile.json",
+      "byteLength": 1025,
+      "sha256": "sha256:d7dd58531968d33b426ced3e2d1e1e298541ac12ea1c852e4a39a8cf361feff3"
+    },
+    {
+      "path": "cryptography/vectors/signed-documents/valid/group-snapshot.json",
+      "byteLength": 1174,
+      "sha256": "sha256:42fae60508eb1f9bf85fd17b248f4291984a5b217ab3c4dd7a1bc1852344174d"
+    },
+    {
+      "path": "schemas/agent-card.schema.json",
+      "byteLength": 3594,
+      "sha256": "sha256:a326cf8f713fe11b2c65a3e536bab58ada325613fec0a502e7a266e2837e2e44"
+    },
+    {
+      "path": "schemas/approval.schema.json",
+      "byteLength": 2860,
+      "sha256": "sha256:3d50a272dbaf160c9346b5301d47ac213c42c985b0b469a304a64d9b6393f031"
+    },
+    {
+      "path": "schemas/artifact.schema.json",
+      "byteLength": 3132,
+      "sha256": "sha256:012d03e1e8472ce90c0ff78ed3d5561f338daac4fe291d7cd9df46af30a5e2a3"
+    },
+    {
+      "path": "schemas/command.schema.json",
+      "byteLength": 8251,
+      "sha256": "sha256:525e0e0e6b219e2284b959b68b067f3fa637013bbe17c41bb23c1771afb3fa0c"
+    },
+    {
+      "path": "schemas/common.schema.json",
+      "byteLength": 6611,
+      "sha256": "sha256:4d3e1c0910f36f49e16ce3d2323aab4fa3914554d20f9991d7a731966f5c6acf"
+    },
+    {
+      "path": "schemas/context-package.schema.json",
+      "byteLength": 2908,
+      "sha256": "sha256:fc2a7b918e0bd5dfbb4c04255fb5e8439347a66c740c8e54983e47e7181b2076"
+    },
+    {
+      "path": "schemas/event.schema.json",
+      "byteLength": 4327,
+      "sha256": "sha256:9c4a8f9313648158aa1f2d164497962fd424ff7569726ffc8291fbd1846e198f"
+    },
+    {
+      "path": "schemas/evidence.schema.json",
+      "byteLength": 2414,
+      "sha256": "sha256:7dd8fd2c6ac4fa1b696b7b1b2f2be416cdebce721e426b076365bceccc169ce4"
+    },
+    {
+      "path": "schemas/extension-profile.schema.json",
+      "byteLength": 1885,
+      "sha256": "sha256:5263d2c3aa969c653ff27c200e51f936bb9d0c16aa1baf1974c65690a5226f34"
+    },
+    {
+      "path": "schemas/group-snapshot.schema.json",
+      "byteLength": 1865,
+      "sha256": "sha256:9e3ebe579915104c191505277a3414644e83511e378bdee0817638a9d90041df"
+    }
+  ],
+  "cases": [
+    {
+      "id": "accept.canonicalization.rfc8785-section-3.2.2",
+      "kind": "canonicalization",
+      "evaluations": [
+        {
+          "input": "cryptography/vectors/canonicalization/rfc8785-section-3.2.2-input.json",
+          "expectedJcs": "cryptography/vectors/canonicalization/rfc8785-section-3.2.2.jcs",
+          "sha256": "sha256:2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+        }
+      ]
+    },
+    {
+      "id": "accept.command.alternate-json-serialization",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command-alternate-json-serialization.json",
+          "registry": "cryptography/keys/registry-timestamp-casing-and-offset-bounds.json",
+          "signingKey": "cryptography/keys/signing-coordinator.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+              },
+              "protectedTime": "2026-07-15t00:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/command-lowercase-t-alternate-serialization.signing.jcs",
+              "signingHash": "sha256:dcebc26f95fd2168620e4391a53a94b22f4b7161ba081b52e64cfc1a74baf8bf",
+              "signature": "iG90p5POJKZravPJOZVJQ18TQbltZY9ulWxWrq6hHcYSG1d9gH-npB5Jft-opLu4RyLhCcZ73CzpyM-pjy2qCw",
+              "signedDocumentHash": "sha256:3412ad82076334da393f755fb7b02bb0221ea4e79c7aee91b09b52488f1312cf"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "accept.command.golden",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-coordinator.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+              },
+              "protectedTime": "2026-07-15T00:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/command.signing.jcs",
+              "signingHash": "sha256:6655c5d67ae3ecc19a4ed04bda7f1372aeaafc7adf939a77715de96ef2100695",
+              "signature": "PMeeKgpw-HlGNwHbQbEMrfAxbw1815fBdFhOSTHy31ss90eTcuQ4rWeRZbmqFFtHgLKzd0gNm67-HenzwGVhAg",
+              "signedDocumentHash": "sha256:1d17d0bd5379e554d48d14a6b328671f12860c6c3278bc1e7ca4e1163a74353f"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "accept.profile-matrix.all-nine",
+      "kind": "profile-matrix",
+      "evaluations": [
+        {
+          "profileId": "agent-card",
+          "document": "cryptography/vectors/signed-documents/valid/agent-card.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-organization-registry.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-organization-registry",
+              "principal": {
+                "type": "service",
+                "id": "urn:missionweaveprotocol:service:organization-registry"
+              },
+              "protectedTime": "2026-07-01T00:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/agent-card.signing.jcs",
+              "signingHash": "sha256:5817bf9d0bed81a66be6e92f17b1a72ec23de15e73d130c4b12f6132c3641fc1",
+              "signature": "uK2KeUorGUeBCVgjMZZ1CSZjav9VosLQ7wCp3-bIeIawJEmqzfkDqzUbZZsn-ikvUzAFiSbg258O_4y0ZtENDA",
+              "signedDocumentHash": "sha256:740e8d9ddd9c7431d26ee2b4e21377f3180a54d778a256f91910c1e31eb0fbd1"
+            }
+          }
+        },
+        {
+          "profileId": "approval",
+          "document": "cryptography/vectors/signed-documents/valid/approval.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-mission-owner.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-mission-owner",
+              "principal": {
+                "type": "human",
+                "id": "urn:missionweaveprotocol:human:mission-owner"
+              },
+              "protectedTime": "2026-07-15T04:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/approval.signing.jcs",
+              "signingHash": "sha256:495117f78fc1f442b5f02adea515c5a1c17b582296f171de8b5e9dd3f0579285",
+              "signature": "kDXH5FdLrSK3uMv__08tAMNl3Z0n_a2pb_SdaQJrXcLuPprNh-HO1Uz5JTCLe9R45-etciBgk9-FjFY_lScCCQ",
+              "signedDocumentHash": "sha256:0ccbfee038ee2936f3d06da63b0db49e47a845c65dbd83c3d0586c4c867861ba"
+            }
+          }
+        },
+        {
+          "profileId": "artifact",
+          "document": "cryptography/vectors/signed-documents/valid/artifact.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-developer-one.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-developer-one",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:developer-one"
+              },
+              "protectedTime": "2026-07-15T03:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/artifact.signing.jcs",
+              "signingHash": "sha256:6837c1240131f277dbad08baf04c546d51d6f7633bb9a7993eaa8f0f8b1f18d0",
+              "signature": "5PSjDiyBzmkoJ5g6PWS8zJqmQyDIAxgbC0jB2wjVg0JnVWVgQ1GDXA8qn1ujCH5oz8VuWtO77WN-eBZpYJ3qCA",
+              "signedDocumentHash": "sha256:bc2f2feaae2b0516f6fa2f5eb8f856be978d6adcc1ad8af8fcd67836d1c6e7c7"
+            }
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command-timestamp-fractional-precision.json",
+          "registry": "cryptography/keys/registry-timestamp-fractional-precision.json",
+          "signingKey": "cryptography/keys/signing-coordinator.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+              },
+              "protectedTime": "2026-07-15T00:00:00.1234560000000000001Z",
+              "signingBytes": "cryptography/vectors/canonicalization/command-timestamp-fractional-precision.signing.jcs",
+              "signingHash": "sha256:d079aacfe615d92853bf0cabd51ff208ba2f92d9931bbce1f6c2aa8dd90af729",
+              "signature": "YRHglnyxX2Z_hXafOiTnvQ8ZACTEqnwXbfs9AsWC7qdqY5ABA62KL4Rf2U12lurGqZfDoNmz7XyzznG6bnnOAg",
+              "signedDocumentHash": "sha256:a85f5a3d4355ea1dbf2e8c419e1b9d5e20ec08c55cb2fef66b6c6f1fcca3e7b9"
+            }
+          }
+        },
+        {
+          "profileId": "context-package",
+          "document": "cryptography/vectors/signed-documents/valid/context-package.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-coordinator.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+              },
+              "protectedTime": "2026-07-15T00:10:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/context-package.signing.jcs",
+              "signingHash": "sha256:1875f36ffe7688512b3441d4381140336cc9a97a4a3250e5e4470f449c16bcf2",
+              "signature": "2SJwAboZ-FZDpj4gEFvncl_TLOh9zRXR-t1R5XE91FUJwg1cW43Rhi44yhWInHjZXFrnZ2CKMGjxgzof4tN0Bg",
+              "signedDocumentHash": "sha256:4a5f2a254fe9284e7b862a2a2e1cae66594d18701bbcba80898334e448554734"
+            }
+          }
+        },
+        {
+          "profileId": "event",
+          "document": "cryptography/vectors/signed-documents/valid/event.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-group-authority.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-group-authority",
+              "principal": {
+                "type": "service",
+                "id": "urn:missionweaveprotocol:service:group-authority"
+              },
+              "protectedTime": "2026-07-15T00:00:01Z",
+              "signingBytes": "cryptography/vectors/canonicalization/event.signing.jcs",
+              "signingHash": "sha256:b13e0911e40c702f4dfe6f9a23e162ee8d6312c66b712efdbce455762bd7a369",
+              "signature": "EfaJXZy7q9SV2CNikXLchB_P_072z-Bc8o3rg5q2JNA7xYFJjuHTBa2308VRksLtq5GiHDZ_LvUDhHIGTPvpDg",
+              "signedDocumentHash": "sha256:bb1c7b338f947dc5dc06d714125f7a4cab4da7f14baee7d45b2e0aabbd1099f6"
+            }
+          }
+        },
+        {
+          "profileId": "evidence",
+          "document": "cryptography/vectors/signed-documents/valid/evidence.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-test-reviewer.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-test-reviewer",
+              "principal": {
+                "type": "agent",
+                "id": "urn:missionweaveprotocol:agent:test-reviewer"
+              },
+              "protectedTime": "2026-07-15T03:10:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/evidence.signing.jcs",
+              "signingHash": "sha256:9caeb847c295014cfc99ee0ef63c28f85237c3bb040b66e1b529762d2197ca4a",
+              "signature": "j1B5jBm6EdkK2N-cfSizilwhCFpPnbaPZt38bnKWgLsqCaKDj86rVfITceTGEbry5wvycIMkzAJAN-SbyRWOAg",
+              "signedDocumentHash": "sha256:5908e2b5341981e7497e5cfe61941fcaca45741d578d5cd61b12098fb600b04a"
+            }
+          }
+        },
+        {
+          "profileId": "extension-profile",
+          "document": "cryptography/vectors/signed-documents/valid/extension-profile.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-security-owner.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-security-owner",
+              "principal": {
+                "type": "human",
+                "id": "urn:missionweaveprotocol:human:security-owner"
+              },
+              "protectedTime": "2026-07-01T00:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/extension-profile.signing.jcs",
+              "signingHash": "sha256:aa9a0f41efd74f9bad47605f25487025e1d36f117d014c192d9a62645296e8c9",
+              "signature": "nSaHOroSdp6DBm-PWfXohy--1UHcP5_-0gnZdMX0rueGpN6f50yi8Kd_ZDozWqfO1ZOZJ6V3fH31nh-IjZ2qBQ",
+              "signedDocumentHash": "sha256:88e9c30e28d7b8a91c8d81e2eacb9aff978320b5371c817957c57819a2963247"
+            }
+          }
+        },
+        {
+          "profileId": "group-snapshot",
+          "document": "cryptography/vectors/signed-documents/valid/group-snapshot.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "signingKey": "cryptography/keys/signing-group-authority.json",
+          "fault": null,
+          "expect": {
+            "stage": "complete",
+            "wireCode": null,
+            "verified": {
+              "keyId": "urn:missionweaveprotocol:key:crypto-vector-group-authority",
+              "principal": {
+                "type": "service",
+                "id": "urn:missionweaveprotocol:service:group-authority"
+              },
+              "protectedTime": "2026-07-15T02:00:00Z",
+              "signingBytes": "cryptography/vectors/canonicalization/group-snapshot.signing.jcs",
+              "signingHash": "sha256:061f1d6c35ce4ab44c9c7432f016f241cd0c4d10695deffde7ff0a534c02c47b",
+              "signature": "6gkChlDXUXz7fcuJrghdpytgO3H3gT9l6JzQWkXabz2to2EeopAZWx13Cm6yCOicLk3p4gLVB2OHHSkZyZSHBA",
+              "signedDocumentHash": "sha256:b930ebcfdc0bd675b484890e5a485e2715ed4ddefd91bf57379be45062cdf833"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.canonicalization.data-model-matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-number-1e400.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "number-outside-finite-binary64",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "canonicalization",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-unpaired-surrogate.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "unpaired-unicode-surrogate",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "canonicalization",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.key-id-alias",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-key-alias.json",
+          "registry": "cryptography/keys/registry-key-alias.json",
+          "fault": {
+            "id": "key-id-alias",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "agent-card",
+          "document": "cryptography/vectors/signed-documents/invalid/agent-card-wrong-signer.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "agent-card-signer-not-service",
+            "basis": {
+              "caseId": "accept.profile-matrix.all-nine",
+              "profileId": "agent-card"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "artifact",
+          "document": "cryptography/vectors/signed-documents/invalid/artifact-wrong-signer.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "artifact-signer-not-producer",
+            "basis": {
+              "caseId": "accept.profile-matrix.all-nine",
+              "profileId": "artifact"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-cross-principal-reuse.json",
+          "fault": {
+            "id": "cross-principal-public-key-reuse",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-key-not-yet-valid.json",
+          "fault": {
+            "id": "key-not-yet-valid",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+          "registry": "cryptography/keys/registry-public-key-identity.json",
+          "fault": {
+            "id": "public-key-identity",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+          "registry": "cryptography/keys/registry-public-key-mixed-order.json",
+          "fault": {
+            "id": "public-key-mixed-order",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-negative-zero.json",
+          "fault": {
+            "id": "public-key-negative-zero",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+          "registry": "cryptography/keys/registry-public-key-noncanonical.json",
+          "fault": {
+            "id": "public-key-noncanonical-encoding",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-nonzero-unused-pad-bits.json",
+          "fault": {
+            "id": "public-key-nonzero-unused-pad-bits",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-off-curve.json",
+          "fault": {
+            "id": "public-key-off-curve",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-padded.json",
+          "fault": {
+            "id": "public-key-padded-base64url",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+          "registry": "cryptography/keys/registry-public-key-small-order.json",
+          "fault": {
+            "id": "public-key-small-order",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-y-equals-p.json",
+          "fault": {
+            "id": "public-key-y-equals-p",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-revoked-at-equality.json",
+          "fault": {
+            "id": "revoked-at-equality",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-valid-until-equality.json",
+          "fault": {
+            "id": "valid-until-equality",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.public-key-rebinding",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-rebinding.json",
+          "fault": {
+            "id": "public-key-rebinding",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.public-key-wrong-length",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-public-key-wrong-length.json",
+          "fault": {
+            "id": "public-key-wrong-length",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.unknown-key",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-unknown-key.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "unknown-key",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.key-resolution.wrong-principal",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/valid/command.json",
+          "registry": "cryptography/keys/registry-wrong-principal.json",
+          "fault": {
+            "id": "wrong-principal-binding",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "key-resolution",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.parse.byte-level-matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-invalid-utf8.bin",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "invalid-utf8",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "parse",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-trailing-data.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "trailing-data",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "parse",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-utf8-bom.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "utf8-bom",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "parse",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.parse.duplicate-decoded-member",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-duplicate-decoded-member.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "duplicate-decoded-member",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "parse",
+            "wireCode": "PROTOCOL_VIOLATION"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.schema.padded-signature-base64url",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-padded-signature.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "padded-signature-base64url",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "schema",
+            "wireCode": "SCHEMA_VALIDATION_FAILED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.schema.validation-matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-leap-second.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "timestamp-leap-second",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "schema",
+            "wireCode": "SCHEMA_VALIDATION_FAILED"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-unknown-local-offset.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "timestamp-unknown-local-offset",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "schema",
+            "wireCode": "SCHEMA_VALIDATION_FAILED"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-year-zero.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "timestamp-year-zero",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "schema",
+            "wireCode": "SCHEMA_VALIDATION_FAILED"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-unsupported-algorithm.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "unsupported-algorithm",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "schema",
+            "wireCode": "SCHEMA_VALIDATION_FAILED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature-envelope.created-at-mismatch",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-created-at-mismatch.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "protected-time-created-at-mismatch",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature-envelope.ed25519-encoding-matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-mixed-order.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-mixed-order",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-negative-zero.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-negative-zero",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-noncanonical.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-noncanonical",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-off-curve.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-off-curve",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-small-order.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-small-order",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-r-y-equals-p.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-r-y-equals-p",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-s-out-of-range.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-s-out-of-range",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-signature-wrong-length.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-wrong-length",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature-envelope.nonzero-unused-pad-bits",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-nonzero-unused-pad-bits.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "signature-nonzero-unused-pad-bits",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature-envelope.protected-time-not-utc-z",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-protected-time-not-utc-z.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "protected-time-not-utc-z",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature-envelope",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature.equation-matrix",
+      "kind": "failure-matrix",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-weak-key-forgery.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "identity-r-equation-mismatch",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        },
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-payload-tamper.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "payload-tamper",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature.extension-nested-signature-tamper",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-extension-signature-tamper.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "extension-nested-signature-tamper",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject.signature.payload-nested-signature-tamper",
+      "kind": "single",
+      "evaluations": [
+        {
+          "profileId": "command",
+          "document": "cryptography/vectors/signed-documents/invalid/command-payload-signature-tamper.json",
+          "registry": "cryptography/keys/registry-valid.json",
+          "fault": {
+            "id": "payload-nested-signature-tamper",
+            "basis": {
+              "caseId": "accept.command.golden",
+              "profileId": "command"
+            }
+          },
+          "expect": {
+            "stage": "signature",
+            "wireCode": "AUTH_INVALID_SIGNATURE"
+          }
+        }
+      ]
+    }
+  ],
+  "artifactDigest": "sha256:487e18c1ea7053432953f28d1496ae4fdb8e9d42c2eeb8e94f9b21f8cc2596a2"
+}

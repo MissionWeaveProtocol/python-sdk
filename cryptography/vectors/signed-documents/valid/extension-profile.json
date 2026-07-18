@@ -1,0 +1,32 @@
+{
+  "profileUri": "urn:missionweaveprotocol:profile:acme-security-review",
+  "name": "Acme Security Review",
+  "version": "1.0.0",
+  "schemaUri": "https://schemas.acme.example/missionweaveprotocol/security-review-1.json",
+  "schemaHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "requiredCapabilities": [
+    {
+      "id": "acme.security.application-review",
+      "version": "1.0.0"
+    }
+  ],
+  "critical": true,
+  "commandKinds": [
+    "ext.acme.security_review.request"
+  ],
+  "eventKinds": [
+    "ext.acme.security_review.completed"
+  ],
+  "overridesCoreInvariants": false,
+  "approvedBy": {
+    "type": "human",
+    "id": "urn:missionweaveprotocol:human:security-owner"
+  },
+  "approvedAt": "2026-07-01T00:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-security-owner",
+    "createdAt": "2026-07-01T00:00:00Z",
+    "value": "nSaHOroSdp6DBm-PWfXohy--1UHcP5_-0gnZdMX0rueGpN6f50yi8Kd_ZDozWqfO1ZOZJ6V3fH31nh-IjZ2qBQ"
+  }
+}

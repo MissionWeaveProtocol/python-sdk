@@ -1,0 +1,7 @@
+{
+  "testOnly": true,
+  "keyId": "urn:missionweaveprotocol:key:crypto-vector-developer-one",
+  "algorithm": "Ed25519",
+  "seed": "mwwHpg_gVux1jLmbdSn2ZT6Z2acvVJhDDtG0RXfR38s",
+  "publicKey": "7D-keB5WWULuPx53Zwf9j2JVLLTq4btqsJE1ubL66Vk"
+}

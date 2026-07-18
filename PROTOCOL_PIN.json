@@ -15,5 +15,15 @@
       "sha256": "21badf03fc8b05874a744a2d66d064265c635512dd49378b8d24ab1aa0e958da"
     }
   },
+  "cryptography": {
+    "path": "cryptography/manifest.json",
+    "sourceCommit": "235aee85ba88934641822e1639e08efd2c9e29b6",
+    "profileId": "missionweaveprotocol.signed-document-verification.v0.1",
+    "manifestVersion": 1,
+    "artifactDigest": "sha256:487e18c1ea7053432953f28d1496ae4fdb8e9d42c2eeb8e94f9b21f8cc2596a2",
+    "artifactCount": 94,
+    "caseCount": 22,
+    "evaluationCount": 58
+  },
   "bundleSha256": "b5590fae29ae09e8c2ec77973405878f4dcb13d23e8acdfb888d563ec770bba7"
 }

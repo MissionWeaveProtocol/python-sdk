@@ -1,0 +1,56 @@
+{
+  "protocolVersion": "0.1",
+  "actionId": "urn:uuid:11111111-2222-4333-8444-555555555555",
+  "actor": {
+    "type": "agent",
+    "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+  },
+  "sessionEpoch": 7,
+  "membershipEpoch": 3,
+  "coordinatorEpoch": 4,
+  "groupId": "urn:missionweaveprotocol:group:crypto-vector",
+  "conversationId": "urn:missionweaveprotocol:conversation:crypto-review",
+  "workItemId": "urn:missionweaveprotocol:work-item:crypto-review",
+  "kind": "mission.submit_for_approval",
+  "expectedRevision": 42,
+  "correlationId": "urn:uuid:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  "causedByEventId": "urn:uuid:99999999-8888-4777-8666-555555555555",
+  "issuedAt": "2026-07-15T00:00:00-00:00",
+  "payload": {
+    "artifactHashes": [
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "signature": "payload-signature-must-be-covered"
+  },
+  "extensions": {
+    "urn:missionweaveprotocol:extension:crypto-vector": {
+      "version": "1.0.0",
+      "critical": false,
+      "data": {
+        "array": [
+          3,
+          2,
+          1
+        ],
+        "enabled": true,
+        "large": 1e+30,
+        "maxSafeInteger": 9007199254740991,
+        "negativeZero": -0.0,
+        "nested": {
+          "signature": "nested-signature-must-be-covered",
+          "text": "Résumé 東京 🚀"
+        },
+        "nothing": null,
+        "tiny": 1e-07,
+        "": "bmp-private-use",
+        "😀": "supplementary-plane"
+      }
+    }
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+    "createdAt": "2026-07-15T00:00:00-00:00",
+    "value": "_xWHxlu9G_qibfxzDspzJmBgRzQgqb_6ab1wfrhs9tFMjRPIvr4jXL1UaAMO-gcPOWJtrd8ShB5lXxG_NxTgAQ"
+  }
+}
