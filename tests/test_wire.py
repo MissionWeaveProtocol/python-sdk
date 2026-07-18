@@ -6,7 +6,15 @@ from datetime import UTC, datetime
 import pytest
 from jsonschema import ValidationError as JSONSchemaValidationError
 
+from missionweaveprotocol import (
+    AgentRegistryKeyResolver,
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    SignedDocumentVerificationError,
+    VerificationStage,
+)
 from missionweaveprotocol.conformance import SchemaCatalog
+from missionweaveprotocol.crypto import Ed25519SigningKey, generate_keypair
 from missionweaveprotocol.wire import (
     AckFrame,
     Acknowledgement,
@@ -20,10 +28,12 @@ from missionweaveprotocol.wire import (
     GroupCursor,
     HelloFrame,
     PingFrame,
+    ReceivedCommandFrame,
     SubscribeFrame,
     WelcomeFrame,
     encode_frame,
     parse_frame,
+    parse_received_frame,
 )
 
 NOW = datetime(2026, 7, 15, tzinfo=UTC)
@@ -183,3 +193,95 @@ def test_command_frame_round_trips_extension_data_without_promoting_core_fields(
     assert parsed.command["groupId"] == COMMAND["groupId"]
     assert parsed.command["payload"] == COMMAND["payload"]
     assert parsed.command["signature"] == COMMAND["signature"]
+
+
+def test_received_command_frame_preserves_exact_nested_json_bytes() -> None:
+    raw_command = (
+        '{\n  "payload": {"values": [true, false, null, '
+        '{"escaped": "quote: \\"; unicode: \\u263A"}], "number": 1e400},'
+        '\n  "protocolVersion": "0.1"\n}'
+    )
+    raw_frame = (
+        '{"protocolVersion":"0.1","frameId":"urn:missionweaveprotocol:frame:raw",'
+        '"frameType":"COMMAND","command":' + raw_command + "}"
+    )
+
+    parsed = parse_received_frame(raw_frame)
+
+    assert isinstance(parsed, ReceivedCommandFrame)
+    assert parsed.command_bytes == raw_command.encode()
+
+
+@pytest.mark.parametrize(
+    "raw_frame",
+    (
+        '{"frameId":"urn:missionweaveprotocol:frame:missing-version",'
+        '"frameType":"COMMAND","command":{}}',
+        '{"protocolVersion":"0.1","frameType":"COMMAND","command":{}}',
+    ),
+)
+def test_received_command_frame_requires_normative_envelope_members(raw_frame: str) -> None:
+    with pytest.raises(ValueError):
+        parse_received_frame(raw_frame)
+
+
+def test_deeply_nested_command_is_a_controlled_protocol_rejection() -> None:
+    raw_command = "[" * 1100 + "null" + "]" * 1100
+    raw_frame = (
+        '{"protocolVersion":"0.1","frameId":"urn:missionweaveprotocol:frame:deep",'
+        '"frameType":"COMMAND","command":' + raw_command + "}"
+    )
+
+    with pytest.raises(ValueError, match="frame member 'command' has invalid JSON"):
+        parse_received_frame(raw_frame)
+
+
+def test_huge_command_integer_reaches_codec_canonicalization() -> None:
+    private_key, public_key = generate_keypair()
+    codec = SignedDocumentCodec()
+    unsigned = {name: value for name, value in COMMAND.items() if name != "signature"}
+    unsigned["extensions"] = {
+        "https://profiles.example/numeric": {
+            "version": "1.0.0",
+            "critical": False,
+            "data": {"probe": 0},
+        }
+    }
+    signed = codec.sign(
+        SignedDocumentKind.COMMAND,
+        unsigned,
+        Ed25519SigningKey(SIGNATURE["keyId"], private_key),
+    )
+    raw_command = signed.canonical_document_bytes.replace(b'"probe":0', b'"probe":' + (b"9" * 5000))
+    raw_frame = (
+        b'{"protocolVersion":"0.1",'
+        b'"frameId":"urn:missionweaveprotocol:frame:huge-integer",'
+        b'"frameType":"COMMAND","command":' + raw_command + b"}"
+    )
+
+    parsed = parse_received_frame(raw_frame)
+
+    assert isinstance(parsed, ReceivedCommandFrame)
+    assert parsed.command_bytes == raw_command
+    resolver = AgentRegistryKeyResolver(
+        json.dumps(
+            {
+                "organizationId": "urn:missionweaveprotocol:organization:wire-tests",
+                "bindings": [
+                    {
+                        "keyId": SIGNATURE["keyId"],
+                        "principal": COMMAND["actor"],
+                        "algorithm": "Ed25519",
+                        "publicKey": public_key,
+                        "validFrom": "2000-01-01T00:00:00Z",
+                        "validityHistory": [],
+                    }
+                ],
+            },
+            separators=(",", ":"),
+        ).encode()
+    )
+    with pytest.raises(SignedDocumentVerificationError) as captured:
+        codec.verify(SignedDocumentKind.COMMAND, parsed.command_bytes, resolver)
+
+    assert captured.value.protected_error.stage is VerificationStage.CANONICALIZATION

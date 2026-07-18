@@ -149,8 +149,8 @@ geordnetes Replay.
 
 ## WebSocket Group Gateway ausführen
 
-Erstelle kurzlebige lokale Schlüssel und eine von der Organization signierte
-Registry:
+Erstelle kurzlebige lokale Schlüssel, eine von der Organization signierte Agent Registry, die
+Agent Cards enthält, und einen vollständigen Signaturschlüssel-Snapshot der Agent Registry:
 
 ```bash
 uv run python examples/create_dev_registry.py
@@ -162,6 +162,7 @@ export MISSIONWEAVEPROTOCOL_SESSION_SECRET='development-only-session-secret-32-b
 
 uv run missionweaveprotocol-server \
   --registry .missionweaveprotocol/dev-registry.json \
+  --agent-registry-snapshot .missionweaveprotocol/dev-agent-registry-snapshot.json \
   --database-url postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol \
   --organization-public-key "$MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY" \
   --allow-insecure

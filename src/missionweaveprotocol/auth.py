@@ -187,6 +187,24 @@ class AgentKeyRegistry:
             raise AuthenticationError("Agent key was revoked")
         return record.public_key
 
+    def matches_registered_public_key(
+        self,
+        agent_id: str,
+        key_id: str,
+        public_key_bytes: bytes,
+    ) -> bool:
+        """Cross-check immutable key material without evaluating lifecycle validity."""
+
+        try:
+            record = self._keys[(agent_id, key_id)]
+        except KeyError as error:
+            raise AuthenticationError("unknown Agent key ID") from error
+        registered_bytes = record.public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        return hmac.compare_digest(registered_bytes, public_key_bytes)
+
     def revoke(
         self,
         agent_id: str,

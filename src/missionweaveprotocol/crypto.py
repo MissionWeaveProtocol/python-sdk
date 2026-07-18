@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass, field
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
@@ -13,6 +14,32 @@ from .canonical import canonical_bytes
 
 type PrivateKeyLike = Ed25519PrivateKey | bytes | str
 type PublicKeyLike = Ed25519PublicKey | bytes | str
+
+
+@dataclass(frozen=True, slots=True)
+class Ed25519SigningKey:
+    """Concrete pure-Ed25519 adapter for ``SignedDocumentCodec`` signing."""
+
+    key_id: str
+    private_key: PrivateKeyLike = field(repr=False)
+
+    @property
+    def algorithm(self) -> str:
+        return "Ed25519"
+
+    @property
+    def public_key_bytes(self) -> bytes:
+        return (
+            load_private_key(self.private_key)
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        )
+
+    def sign(self, message: bytes) -> bytes:
+        return load_private_key(self.private_key).sign(message)
 
 
 def _encode(raw: bytes) -> str:

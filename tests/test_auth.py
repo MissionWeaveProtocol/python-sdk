@@ -138,7 +138,7 @@ def test_expired_session_token_is_rejected() -> None:
         authority.verify_session(grant.token)
 
 
-def test_key_registry_enforces_key_id_validity_and_revocation() -> None:
+def test_agent_registry_enforces_key_id_validity_and_revocation() -> None:
     now = datetime(2026, 7, 15, tzinfo=UTC)
     identity = AgentIdentity.generate("agent://acme/reviewer")
     registry = AgentKeyRegistry()

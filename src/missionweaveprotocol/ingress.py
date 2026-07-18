@@ -2,45 +2,40 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
-from typing import Any
+from collections.abc import Collection, Mapping, Sequence
+from typing import Any, cast
 
 from pydantic import JsonValue
 
-from .canonical import canonical_hash
-from .conformance import SchemaCatalog
 from .models import Command, CommandKind
-
-
-def signing_document(document: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
-    """Return exactly the wire members covered by the Command signature."""
-
-    value = dict(document)
-    value.pop("signature", None)
-    return value
-
-
-def signing_hash(document: Mapping[str, JsonValue]) -> str:
-    """Hash the verified wire signing document without re-projecting its provenance."""
-
-    return canonical_hash(signing_document(document))
+from .signed_documents import (
+    KeyResolver,
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    VerifiedSignedDocument,
+)
 
 
 class CommandIngress:
-    """Validate a wire Command and project all signed provenance into one typed Command."""
+    """Verify raw wire Commands and project their immutable proof into typed execution state."""
 
-    def __init__(self, schemas: SchemaCatalog | None = None) -> None:
-        self._schemas = schemas or SchemaCatalog()
+    def __init__(self, codec: SignedDocumentCodec | None = None) -> None:
+        self._codec = codec or SignedDocumentCodec()
 
-    def validate(self, document: Mapping[str, JsonValue]) -> None:
-        self._schemas.validate("command.schema.json", document)
+    def verify(self, raw_command_bytes: bytes, key_resolver: KeyResolver) -> VerifiedSignedDocument:
+        return self._codec.verify(
+            SignedDocumentKind.COMMAND,
+            raw_command_bytes,
+            key_resolver,
+        )
 
     @staticmethod
-    def project_verified(
-        document: Mapping[str, JsonValue],
-        *,
-        verified_signing_hash: str,
-    ) -> Command:
+    def project_verified(verified: VerifiedSignedDocument) -> Command:
+        if verified.kind is not SignedDocumentKind.COMMAND:
+            raise ValueError("CommandIngress requires a verified Command")
+        document = _thaw_json(verified.document)
+        if not isinstance(document, dict):
+            raise ValueError("verified Command document is not an object")
         candidate: dict[str, Any] = {
             "protocolVersion": document["protocolVersion"],
             "actionId": document["actionId"],
@@ -60,7 +55,7 @@ class CommandIngress:
             "payload": document["payload"],
             "extensions": document.get("extensions", {}),
             "signature": document["signature"],
-            "verifiedSigningHash": verified_signing_hash,
+            "verifiedSigningHash": verified.signing_hash,
         }
         return Command.model_validate(candidate)
 
@@ -82,8 +77,16 @@ class CommandIngress:
         return payload
 
 
+def _thaw_json(value: object) -> JsonValue:
+    if value is None or type(value) in {bool, int, float, str}:
+        return cast(JsonValue, value)
+    if isinstance(value, Mapping):
+        return {str(key): _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
+        return [_thaw_json(item) for item in value]
+    raise TypeError(f"verified document contains non-JSON value {type(value).__name__}")
+
+
 __all__ = [
     "CommandIngress",
-    "signing_document",
-    "signing_hash",
 ]

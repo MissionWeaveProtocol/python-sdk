@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import json
 import socket
 from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
@@ -130,6 +131,7 @@ from missionweaveprotocol.scheduler import (
     WorkOffer,
     WorkTransition,
 )
+from missionweaveprotocol.signed_documents import AgentRegistryKeyResolver
 from missionweaveprotocol.store import InMemoryStore
 from missionweaveprotocol.wire import (
     AuthFrame,
@@ -254,12 +256,63 @@ class _LiveGateway:
     def __init__(self, scenario: _Scenario) -> None:
         keys = AgentKeyRegistry()
         keys.register(REVIEWER, scenario.identities[REVIEWER].public_key)
+        authority_private_key = hashlib.sha256(
+            b"missionweaveprotocol-poc-gateway-authority"
+        ).digest()
+        authority_public_key = encode_public_key(
+            Ed25519PrivateKey.from_private_bytes(authority_private_key).public_key()
+        )
+        bindings: list[dict[str, object]] = []
+        for principal_id, identity in scenario.identities.items():
+            principal_type = (
+                "service"
+                if principal_id == SYSTEM_ID
+                else "human"
+                if principal_id == OWNER_ID
+                else "agent"
+            )
+            normalized_id = (
+                "urn:missionweaveprotocol:service:organization"
+                if principal_id == SYSTEM_ID
+                else principal_id
+            )
+            bindings.append(
+                {
+                    "keyId": default_agent_key_id(principal_id),
+                    "principal": {"type": principal_type, "id": normalized_id},
+                    "algorithm": "Ed25519",
+                    "publicKey": identity.public_key,
+                    "validFrom": "2026-07-01T00:00:00Z",
+                    "validityHistory": [],
+                }
+            )
+        bindings.append(
+            {
+                "keyId": "urn:missionweaveprotocol:key:group-gateway",
+                "principal": {
+                    "type": "service",
+                    "id": "urn:missionweaveprotocol:service:group-gateway",
+                },
+                "algorithm": "Ed25519",
+                "publicKey": authority_public_key,
+                "validFrom": "2026-07-01T00:00:00Z",
+                "validityHistory": [],
+            }
+        )
+        command_key_resolver = AgentRegistryKeyResolver(
+            json.dumps(
+                {
+                    "organizationId": "urn:missionweaveprotocol:organization:poc",
+                    "bindings": bindings,
+                },
+                separators=(",", ":"),
+            ).encode()
+        )
         adapter = CoreGatewayAdapter(
             scenario.core,
             keys,
-            authority_private_key=hashlib.sha256(
-                b"missionweaveprotocol-poc-gateway-authority"
-            ).digest(),
+            command_key_resolver,
+            authority_private_key=authority_private_key,
             clock=scenario.clock,
         )
         sessions = SessionAuthority(
@@ -372,7 +425,7 @@ def _deterministic_human_identity(human_id: str) -> HumanIdentity:
         human_id=human_id,
         private_key=encode_private_key(private_key),
         public_key=encode_public_key(private_key.public_key()),
-        key_id=f"{human_id}:deterministic-poc-key",
+        key_id=default_agent_key_id(human_id),
     )
 
 

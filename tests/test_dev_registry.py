@@ -20,6 +20,7 @@ def test_dev_private_keys_are_written_with_owner_only_permissions(
 ) -> None:
     registry_path = tmp_path / "dev-registry.json"
     keys_path = tmp_path / "dev-keys.json"
+    agent_registry_snapshot_path = tmp_path / "dev-agent-registry-snapshot.json"
     if preexisting:
         keys_path.write_text("permissive placeholder", encoding="utf-8")
         keys_path.chmod(0o644)
@@ -32,6 +33,8 @@ def test_dev_private_keys_are_written_with_owner_only_permissions(
             str(registry_path),
             "--keys-output",
             str(keys_path),
+            "--agent-registry-snapshot-output",
+            str(agent_registry_snapshot_path),
         ],
         cwd=ROOT,
         check=True,
@@ -43,6 +46,14 @@ def test_dev_private_keys_are_written_with_owner_only_permissions(
     keys = json.loads(keys_path.read_text(encoding="utf-8"))
     assert "authorityPrivateKey" in keys
     assert keys["agentKeyId"] == "urn:missionweaveprotocol:key:developer"
+    agent_registry_snapshot = json.loads(agent_registry_snapshot_path.read_text(encoding="utf-8"))
+    assert agent_registry_snapshot["organizationId"].startswith(
+        "urn:missionweaveprotocol:organization:"
+    )
+    assert {binding["principal"]["type"] for binding in agent_registry_snapshot["bindings"]} == {
+        "agent",
+        "service",
+    }
     cards = load_agent_cards(
         registry_path,
         organization_public_key=keys["organizationPublicKey"],

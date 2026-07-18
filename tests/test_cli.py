@@ -52,6 +52,30 @@ def _registry(tmp_path: Path) -> Path:
     return path
 
 
+def _agent_registry_snapshot(tmp_path: Path) -> Path:
+    identity = AgentIdentity.generate("urn:missionweaveprotocol:agent:cli")
+    path = tmp_path / "agent-registry-snapshot.json"
+    path.write_text(
+        json.dumps(
+            {
+                "organizationId": "urn:missionweaveprotocol:organization:cli-tests",
+                "bindings": [
+                    {
+                        "keyId": "urn:missionweaveprotocol:key:cli",
+                        "principal": {"type": "agent", "id": identity.agent_id},
+                        "algorithm": "Ed25519",
+                        "publicKey": identity.public_key,
+                        "validFrom": "2026-01-01T00:00:00Z",
+                        "validityHistory": [],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def test_conformance_entrypoint_runs_repository_manifest() -> None:
     result = CliRunner().invoke(cli.conformance_app, ["--root", str(ROOT)])
 
@@ -74,6 +98,8 @@ def test_server_entrypoint_composes_gateway_and_uvicorn(
         [
             "--registry",
             str(_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
             "--database-url",
             "sqlite+aiosqlite:///:memory:",
             "--host",
@@ -128,6 +154,8 @@ def test_server_passes_tls13_context_factory_to_uvicorn(
         [
             "--registry",
             str(_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
             "--tls-certfile",
             str(certfile),
             "--tls-keyfile",
@@ -151,7 +179,12 @@ def test_server_passes_tls13_context_factory_to_uvicorn(
 def test_server_requires_tls_unless_local_insecure_mode_is_explicit(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         cli.server_app,
-        ["--registry", str(_registry(tmp_path))],
+        [
+            "--registry",
+            str(_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
+        ],
     )
 
     assert result.exit_code != 0

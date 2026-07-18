@@ -14,6 +14,7 @@ from missionweaveprotocol.delegation import (
 from missionweaveprotocol.lease import ExecutionLease, LeaseState
 from missionweaveprotocol.models import DelegationBudget, DelegationGrant, ResourceUsage
 from missionweaveprotocol.signed_documents import (
+    AgentRegistryKeyResolver,
     ExpectedSignerEvidence,
     ExpectedSignerRule,
     KeyRegistryCompleteness,
@@ -41,6 +42,7 @@ from missionweaveprotocol.signed_documents import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "AgentRegistryKeyResolver",
     "BudgetLedger",
     "BudgetLedgerSnapshot",
     "BundleVerificationError",
