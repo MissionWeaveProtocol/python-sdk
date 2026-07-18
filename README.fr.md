@@ -98,7 +98,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 
 Les erreurs de vérification n’exposent sur le wire qu’une erreur non-oraculaire uniforme, tout en
 conservant la première étape en échec et sa raison dans un diagnostic local protégé. Les snapshots
-de Registry partiels ou sans déclaration de complétude échouent de manière fermée. L’exemple
+partiels de l’Agent Registry ou sans déclaration de complétude échouent de manière fermée. L’exemple
 exécutable utilise des fixtures déterministes réservées aux tests :
 
 ```bash

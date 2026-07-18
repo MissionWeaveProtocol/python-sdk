@@ -93,7 +93,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 ```
 
 検証エラーは wire には非オラクル型の統一エラーだけを公開し、保護されたローカル診断には最初の失敗段階と
-理由を保持します。部分的、または完全性が未指定の Registry スナップショットは fail closed になります。
+理由を保持します。部分的、または完全性が未指定の Agent Registry スナップショットは fail closed になります。
 決定的なテスト専用 fixture を使う実行可能なアダプター例は次のとおりです。
 
 ```bash

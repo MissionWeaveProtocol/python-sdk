@@ -87,7 +87,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 ```
 
 Verification errors expose one non-oracular wire error while retaining the first failing stage and
-reason in protected local diagnostics. Partial or unspecified Registry snapshots fail closed. A
+reason in protected local diagnostics. Partial or unspecified Agent Registry snapshots fail closed. A
 runnable adapter example using deterministic test-only fixtures is available with:
 
 ```bash

@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from jsonschema import FormatChecker, ValidationError
+from jsonschema.validators import validator_for
 
 from missionweaveprotocol import (
     ExpectedSignerRule,
@@ -76,10 +78,83 @@ class StaticSigningKey:
         return self._signature
 
 
-def _json(path: str) -> dict[str, object]:
-    value = json.loads((ROOT / path).read_text(encoding="utf-8"))
-    assert isinstance(value, dict)
+def _strict_json_object(path: Path) -> dict[str, object]:
+    def reject_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for name, member in pairs:
+            if name in value:
+                raise ValueError(f"duplicate JSON object member {name!r}")
+            value[name] = member
+        return value
+
+    def reject_constant(value: str) -> object:
+        raise ValueError(f"non-JSON numeric constant {value!r}")
+
+    value = json.loads(
+        path.read_bytes().decode("utf-8", errors="strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=reject_constant,
+    )
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} is not a JSON object")
     return value
+
+
+def _json(path: str) -> dict[str, object]:
+    return _strict_json_object(ROOT / path)
+
+
+def _validated_fixture(
+    manifest: Mapping[str, object],
+    fixture_kind: str,
+    fixture_path: str,
+    *,
+    root: Path = ROOT,
+) -> dict[str, object]:
+    fixture_schemas = manifest["fixtureSchemas"]
+    assert isinstance(fixture_schemas, Mapping)
+    schema_path = fixture_schemas[fixture_kind]
+    assert isinstance(schema_path, str)
+    schema = _strict_json_object(root / schema_path)
+    fixture = _strict_json_object(root / fixture_path)
+    validator_type = validator_for(schema)
+    validator_type.check_schema(schema)
+    validator_type(schema, format_checker=FormatChecker()).validate(fixture)
+    return fixture
+
+
+def test_fixture_validation_uses_the_schema_declared_by_the_manifest() -> None:
+    manifest = _json("cryptography/manifest.json")
+    fixture_schemas = manifest["fixtureSchemas"]
+    assert isinstance(fixture_schemas, dict)
+    fixture_schemas["registry"] = fixture_schemas["signingKey"]
+
+    with pytest.raises(ValidationError):
+        _validated_fixture(manifest, "registry", "cryptography/keys/registry-valid.json")
+
+
+def test_fixture_validation_rejects_duplicate_members_before_schema_validation(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "registry.schema.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "required": ["organizationId"],
+                "properties": {"organizationId": {"type": "string"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "registry.json").write_text(
+        '{"organizationId":"urn:example:first","organizationId":"urn:example:second"}',
+        encoding="utf-8",
+    )
+    manifest: dict[str, object] = {"fixtureSchemas": {"registry": "registry.schema.json"}}
+
+    with pytest.raises(ValueError, match="duplicate"):
+        _validated_fixture(manifest, "registry", "registry.json", root=tmp_path)
 
 
 def test_signs_the_golden_command_without_mutating_the_unsigned_object() -> None:
@@ -166,7 +241,14 @@ def test_executes_all_protocol_owned_cryptography_evaluations() -> None:
 
             kind = SignedDocumentKind(str(evaluation["profileId"]))
             raw = (ROOT / str(evaluation["document"])).read_bytes()
-            resolver = FixtureKeyResolver(str(evaluation["registry"]))
+            registry_path = str(evaluation["registry"])
+            _validated_fixture(manifest, "registry", registry_path)
+            signing_fixture = None
+            if "signingKey" in evaluation:
+                signing_fixture = _validated_fixture(
+                    manifest, "signingKey", str(evaluation["signingKey"])
+                )
+            resolver = FixtureKeyResolver(registry_path)
             expected = evaluation["expect"]
             assert isinstance(expected, dict)
             if expected["stage"] != "complete":
@@ -194,10 +276,10 @@ def test_executes_all_protocol_owned_cryptography_evaluations() -> None:
             assert verified.signature.value == evidence["signature"]
             assert verified.document_hash == evidence["signedDocumentHash"]
 
-            document = json.loads(raw)
-            assert isinstance(document, dict)
+            document = _strict_json_object(ROOT / str(evaluation["document"]))
             document.pop("signature")
-            signing_key = FixtureSigningKey(_json(str(evaluation["signingKey"])))
+            assert signing_fixture is not None
+            signing_key = FixtureSigningKey(signing_fixture)
             signed = codec.sign(kind, document, signing_key)
             assert signed.canonical_signing_bytes == verified.canonical_signing_bytes
             assert signed.signing_hash == verified.signing_hash

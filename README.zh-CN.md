@@ -88,7 +88,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 ```
 
 验证错误对协议线仅暴露统一的非预言式错误，同时在受保护的本地诊断中保留首个失败阶段和原因。
-局部或未声明完整性的 Registry 快照会 fail closed。可运行的适配器示例使用确定性的测试专用夹具：
+局部或未声明完整性的 Agent Registry 快照会 fail closed。可运行的适配器示例使用确定性的测试专用夹具：
 
 ```bash
 uv run python examples/signed_document_codec.py

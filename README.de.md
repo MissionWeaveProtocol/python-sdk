@@ -104,7 +104,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 
 Verifizierungsfehler legen auf dem Wire nur einen einheitlichen, nicht-orakelnden Fehler offen; die
 erste fehlgeschlagene Stufe und ihr Grund bleiben in geschützten lokalen Diagnosen erhalten.
-Partielle Registry-Snapshots oder Snapshots ohne Vollständigkeitserklärung schlagen fail closed
+Partielle Agent-Registry-Snapshots oder Snapshots ohne Vollständigkeitserklärung schlagen fail closed
 fehl. Das ausführbare Beispiel verwendet deterministische Fixtures ausschließlich für Tests:
 
 ```bash

@@ -95,8 +95,8 @@ print(verified.signing_hash, verified.resolved_key.principal)
 ```
 
 Los errores de verificación solo exponen un error wire no oracular, mientras conservan la primera
-etapa fallida y su motivo en diagnósticos locales protegidos. Los snapshots parciales o sin una
-declaración de completitud fallan de forma cerrada. El ejemplo ejecutable usa fixtures
+etapa fallida y su motivo en diagnósticos locales protegidos. Los snapshots parciales del Agent
+Registry o sin una declaración de completitud fallan de forma cerrada. El ejemplo ejecutable usa fixtures
 deterministas solo para pruebas:
 
 ```bash

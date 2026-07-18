@@ -88,7 +88,7 @@ print(verified.signing_hash, verified.resolved_key.principal)
 ```
 
 驗證錯誤對 wire 僅公開統一的非預言式錯誤，同時在受保護的本機診斷中保留第一個失敗階段與原因。
-局部或未宣告完整性的 Registry 快照會 fail closed。可執行的 adapter 範例使用確定性的測試專用 fixture：
+局部或未宣告完整性的 Agent Registry 快照會 fail closed。可執行的 adapter 範例使用確定性的測試專用 fixture：
 
 ```bash
 uv run python examples/signed_document_codec.py

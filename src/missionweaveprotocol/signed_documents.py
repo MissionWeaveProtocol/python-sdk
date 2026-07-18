@@ -149,7 +149,7 @@ class KeyRegistryCompleteness(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class KeyRegistrySnapshot:
-    """Raw Registry evidence plus an explicit completeness assertion."""
+    """Raw Agent Registry evidence plus an explicit completeness assertion."""
 
     completeness: KeyRegistryCompleteness
     registry_bytes: bytes
@@ -157,7 +157,7 @@ class KeyRegistrySnapshot:
 
 @dataclass(frozen=True, slots=True)
 class KeyResolutionRequest:
-    """Context needed to select one complete Organization Registry snapshot."""
+    """Context needed to select one complete Organization-wide Agent Registry snapshot."""
 
     kind: SignedDocumentKind
     key_id: str
@@ -239,10 +239,10 @@ class SigningKey(Protocol):
 
 @runtime_checkable
 class KeyResolver(Protocol):
-    """Adapter returning complete Organization Registry evidence for one key lookup."""
+    """Adapter returning complete Organization-wide Agent Registry evidence for one key lookup."""
 
     def resolve(self, request: KeyResolutionRequest) -> KeyRegistrySnapshot:
-        """Return an explicitly complete Registry snapshot for ``request``."""
+        """Return an explicitly complete Agent Registry snapshot for ``request``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -779,22 +779,22 @@ def _principal(value: object, stage: VerificationStage, label: str) -> Principal
 
 def _resolve_key(raw: bytes, envelope: _Envelope) -> ResolvedKeyEvidence:
     try:
-        registry_document = _strict_json(raw, label="Registry evidence")
+        registry_document = _strict_json(raw, label="Agent Registry evidence")
     except ValueError as error:
         _verification_failure(VerificationStage.KEY_RESOLUTION, str(error))
     if not isinstance(registry_document, Mapping):
         _verification_failure(
-            VerificationStage.KEY_RESOLUTION, "Registry evidence is not an object"
+            VerificationStage.KEY_RESOLUTION, "Agent Registry evidence is not an object"
         )
     if set(registry_document) != {"organizationId", "bindings"}:
         _verification_failure(
-            VerificationStage.KEY_RESOLUTION, "Registry evidence has invalid fields"
+            VerificationStage.KEY_RESOLUTION, "Agent Registry evidence has invalid fields"
         )
     organization_id = registry_document.get("organizationId")
     bindings = registry_document.get("bindings")
     if not isinstance(organization_id, str) or not isinstance(bindings, list) or not bindings:
         _verification_failure(
-            VerificationStage.KEY_RESOLUTION, "Registry evidence has invalid fields"
+            VerificationStage.KEY_RESOLUTION, "Agent Registry evidence has invalid fields"
         )
 
     normalized: dict[str, dict[str, object]] = {}
