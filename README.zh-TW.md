@@ -74,6 +74,26 @@ uv run missionweaveprotocol-conformance --root .
 uv run missionweaveprotocol-conformance --root ../missionweaveprotocol
 ```
 
+## 簽名並驗證 Signed Document
+
+`SignedDocumentCodec` 僅接受九種需要簽名的明確 kind，不會推斷文件類型。`SigningKey` 是唯一的
+簽名 adapter；`KeyResolver` 接收 `KeyResolutionRequest`，而且必須回傳明確宣告
+`ORGANIZATION_WIDE` 完整性的 `KeyRegistrySnapshot`。
+
+```python
+codec = SignedDocumentCodec()
+signed = codec.sign(SignedDocumentKind.COMMAND, unsigned, signing_key)
+verified = codec.verify(SignedDocumentKind.COMMAND, signed.canonical_document_bytes, resolver)
+print(verified.signing_hash, verified.resolved_key.principal)
+```
+
+驗證錯誤對 wire 僅公開統一的非預言式錯誤，同時在受保護的本機診斷中保留第一個失敗階段與原因。
+局部或未宣告完整性的 Registry 快照會 fail closed。可執行的 adapter 範例使用確定性的測試專用 fixture：
+
+```bash
+uv run python examples/signed_document_codec.py
+```
+
 ## 執行雙 Mission POC
 
 ```bash
