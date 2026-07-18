@@ -43,7 +43,7 @@ MissionWeaveProtocol Python SDK 是
   execution lease、checkpoint、Evidence、审查和 Approval 状态转换；
 - 有时限且限定目标范围的 Delegation Grant，并受 capability、budget、depth、
   Membership 和 Coordinator epoch 约束；
-- 递归的子任务（Child Mission）和相互关联的后续 Mission；
+- 递归的子任务（Child Mission，即独立的 Mission，而非 WorkItem）和相互关联的后续 Mission；
 - 每个 Group 独立的 Worker 队列、加权公平的全局 Scheduler，以及隔离的容量槽位；
 - 至少一次 Delivery、稳定的 Action ID、去重、Cursor、重放和本地恢复；
 - 已签名的 Context Package、带分类的可复用知识发布，以及已签名的 Group 归档；
@@ -82,7 +82,7 @@ uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 
 该命令输出一份规范化 JSON 报告；如果缺少任何必需行为，则以非零状态退出。报告包含
 50 项命名检查。这个确定性场景会运行两个并发的软件开发 Mission，共用一名 reviewer，
-包含由 Worker 通过正式 Work Proposal 提出的后代工作项、一个安全子任务、Worker 之间的
+包含由 Worker 通过正式 Work Proposal 提出的下级工作项、一个安全子任务、Worker 之间的
 澄清交流、两个隔离的执行槽位、仅在 checkpoint 处发生的抢占、工作项阻塞与恢复、
 Coordinator 审查、一次人类
 变更请求，以及准确签名的最终 Approval。

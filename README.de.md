@@ -49,7 +49,8 @@ Protokoll- und Python-Releases werden unabhängig voneinander versioniert.
   Evidence, Prüfung und Approval;
 - ablaufende, auf ein Ziel begrenzte Delegation Grant, geschützt durch Capability,
   Budget, Tiefe, Membership und Coordinator Epoch;
-- rekursive untergeordnete Missionen (Child Mission) und verknüpfte Follow-up Mission;
+- rekursive Unteraufgaben (Child Mission), jeweils eine eigenständige Mission und kein WorkItem,
+  sowie verknüpfte Follow-up Mission;
 - Group-spezifische Warteschlangen des Worker mit einem gewichteten, fairen
   globalen Scheduler und isolierten Capacity Slot;
 - mindestens einmalige Delivery, stabile Action ID, Deduplizierung, Cursor,
@@ -98,7 +99,7 @@ Status ungleich null, wenn ein erforderliches Verhalten fehlt. Sein Bericht
 enthält 50 benannte Prüfungen. Das deterministische Szenario umfasst zwei
 gleichzeitige Softwareentwicklungs-Missionen mit einem gemeinsamen Reviewer, ein
 von einem Worker formal per Work Proposal vorgeschlagenes untergeordnetes WorkItem,
-eine untergeordnete Mission für Sicherheit, Klärungen zwischen Workern, zwei
+eine Unteraufgabe für die Sicherheitsprüfung, Klärungen zwischen Workern, zwei
 isolierte Capacity Slots, ausschließlich Checkpoint-basierte Preemption, ein
 blockiertes und wiederaufgenommenes WorkItem, die Prüfung durch den Coordinator,
 eine menschliche Änderungsanforderung sowie eine exakt signierte finale Approval.
