@@ -47,15 +47,16 @@ LOCALIZED_TERMINOLOGY = (
     (
         "README.zh-TW.md",
         (
-            "子任務（Child Mission，即獨立的 Mission，而非工作項）",
+            "子任务（Child Mission，即獨立的 Mission，而非工作項）",
             "工作項授權、發出 Work Offer、接受 Work Offer",
             "透過正式 Work Proposal 提出的下層工作項",
             "工作項受阻與復原",
         ),
         (
+            "子任務",
             "子 Mission",
             "子安全 Mission",
-            "正式提出的子任務",
+            "正式提出的子任务",
             "任務受阻與復原",
             "發出任務",
             "接受任務",

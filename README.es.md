@@ -138,8 +138,8 @@ adaptador de PostgreSQL y verifica el estado de Mission junto con el replay orde
 
 ## Ejecutar el gateway WebSocket de Group
 
-Crea claves locales desechables, un registro de Agent Cards firmado por la Organization y un
-snapshot completo del Agent Registry de claves de firma:
+Crea claves locales desechables, un Agent Registry firmado por la Organization que contiene
+Agent Cards, y un snapshot completo de las claves de firma del Agent Registry:
 
 ```bash
 uv run python examples/create_dev_registry.py
@@ -151,7 +151,7 @@ export MISSIONWEAVEPROTOCOL_SESSION_SECRET='development-only-session-secret-32-b
 
 uv run missionweaveprotocol-server \
   --registry .missionweaveprotocol/dev-registry.json \
-  --key-registry .missionweaveprotocol/dev-key-registry.json \
+  --agent-registry-snapshot .missionweaveprotocol/dev-agent-registry-snapshot.json \
   --database-url postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol \
   --organization-public-key "$MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY" \
   --allow-insecure

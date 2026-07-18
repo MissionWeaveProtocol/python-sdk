@@ -35,9 +35,9 @@ def main() -> None:
         "--keys-output", type=Path, default=Path(".missionweaveprotocol/dev-keys.json")
     )
     parser.add_argument(
-        "--key-registry-output",
+        "--agent-registry-snapshot-output",
         type=Path,
-        default=Path(".missionweaveprotocol/dev-key-registry.json"),
+        default=Path(".missionweaveprotocol/dev-agent-registry-snapshot.json"),
     )
     args = parser.parse_args()
 
@@ -90,7 +90,7 @@ def main() -> None:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.keys_output.parent.mkdir(parents=True, exist_ok=True)
-    args.key_registry_output.parent.mkdir(parents=True, exist_ok=True)
+    args.agent_registry_snapshot_output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(
             {"agentCards": [card.model_dump(mode="json", by_alias=True)]},
@@ -117,7 +117,7 @@ def main() -> None:
         + "\n",
     )
     valid_from = issued_at.isoformat().replace("+00:00", "Z")
-    args.key_registry_output.write_text(
+    args.agent_registry_snapshot_output.write_text(
         json.dumps(
             {
                 "organizationId": "urn:missionweaveprotocol:organization:local-development",
@@ -162,7 +162,7 @@ def main() -> None:
     )
     print(args.output)
     print(args.keys_output)
-    print(args.key_registry_output)
+    print(args.agent_registry_snapshot_output)
 
 
 if __name__ == "__main__":

@@ -52,9 +52,9 @@ def _registry(tmp_path: Path) -> Path:
     return path
 
 
-def _key_registry(tmp_path: Path) -> Path:
+def _agent_registry_snapshot(tmp_path: Path) -> Path:
     identity = AgentIdentity.generate("urn:missionweaveprotocol:agent:cli")
-    path = tmp_path / "key-registry.json"
+    path = tmp_path / "agent-registry-snapshot.json"
     path.write_text(
         json.dumps(
             {
@@ -98,8 +98,8 @@ def test_server_entrypoint_composes_gateway_and_uvicorn(
         [
             "--registry",
             str(_registry(tmp_path)),
-            "--key-registry",
-            str(_key_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
             "--database-url",
             "sqlite+aiosqlite:///:memory:",
             "--host",
@@ -154,8 +154,8 @@ def test_server_passes_tls13_context_factory_to_uvicorn(
         [
             "--registry",
             str(_registry(tmp_path)),
-            "--key-registry",
-            str(_key_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
             "--tls-certfile",
             str(certfile),
             "--tls-keyfile",
@@ -182,8 +182,8 @@ def test_server_requires_tls_unless_local_insecure_mode_is_explicit(tmp_path: Pa
         [
             "--registry",
             str(_registry(tmp_path)),
-            "--key-registry",
-            str(_key_registry(tmp_path)),
+            "--agent-registry-snapshot",
+            str(_agent_registry_snapshot(tmp_path)),
         ],
     )
 

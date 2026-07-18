@@ -234,15 +234,15 @@ def _server_command(
             help="Organization-controlled JSON Agent Registry.",
         ),
     ],
-    key_registry: Annotated[
+    agent_registry_snapshot: Annotated[
         Path,
         typer.Option(
-            "--key-registry",
-            envvar="MISSIONWEAVEPROTOCOL_KEY_REGISTRY",
+            "--agent-registry-snapshot",
+            envvar="MISSIONWEAVEPROTOCOL_AGENT_REGISTRY_SNAPSHOT",
             exists=True,
             dir_okay=False,
             readable=True,
-            help="Complete Organization-controlled signing-key Agent Registry snapshot.",
+            help="Complete Organization-controlled Agent Registry signing-key snapshot.",
         ),
     ],
     database_url: Annotated[
@@ -319,11 +319,11 @@ def _server_command(
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="--registry") from error
     try:
-        command_key_resolver = AgentRegistryKeyResolver(key_registry.read_bytes())
+        command_key_resolver = AgentRegistryKeyResolver(agent_registry_snapshot.read_bytes())
     except OSError as error:
         raise typer.BadParameter(
-            f"cannot read signing-key Agent Registry {key_registry}: {error}",
-            param_hint="--key-registry",
+            f"cannot read Agent Registry snapshot {agent_registry_snapshot}: {error}",
+            param_hint="--agent-registry-snapshot",
         ) from error
     app = create_gateway_app(
         database_url=database_url,
