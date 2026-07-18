@@ -45,7 +45,8 @@ Las versiones del protocolo y de Python se gestionan de forma independiente.
   oferta, aceptación, ownership, execution lease, checkpoint, Evidence, revisión y Approval;
 - los Delegation Grant con vencimiento y alcance limitado al objetivo, sujetos a capability,
   budget, depth, Membership y los epoch del Coordinator;
-- Mission hijas recursivas (Child Mission) y Mission de seguimiento enlazadas;
+- subtareas recursivas (Child Mission), cada una de ellas una Mission independiente y no un WorkItem,
+  y Mission de seguimiento enlazadas;
 - colas de Worker por Group, un Scheduler global con equidad ponderada y capacity slot aislados;
 - Delivery al menos una vez, Action ID estables, deduplicación, Cursor, replay y recuperación local;
 - Context Package firmados, publicación clasificada de conocimiento reutilizable y archivos de
@@ -88,8 +89,8 @@ uv run missionweaveprotocol-demo --workdir .missionweaveprotocol/poc
 El comando emite un informe JSON canónico y termina con un estado distinto de cero si falta algún
 comportamiento obligatorio. El informe contiene 50 comprobaciones con nombre. El escenario
 determinista ejecuta dos Mission de desarrollo de software en paralelo con un reviewer compartido,
-un WorkItem descendiente propuesto formalmente por un Worker mediante una Work Proposal, una Mission
-hija de seguridad, aclaraciones entre Worker, dos execution slot aislados, preemption únicamente en
+un WorkItem subordinado propuesto formalmente por un Worker mediante una Work Proposal, una subtarea
+de seguridad, aclaraciones entre Worker, dos execution slot aislados, preemption únicamente en
 checkpoint, un WorkItem bloqueado y reanudado, revisión del Coordinator, una solicitud humana de
 cambios y Approval finales firmadas con exactitud.
 

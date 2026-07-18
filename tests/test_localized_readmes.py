@@ -27,9 +27,9 @@ LOCALIZED_TERMINOLOGY = (
     (
         "README.zh-CN.md",
         (
-            "子任务（Child Mission）",
+            "子任务（Child Mission，即独立的 Mission，而非 WorkItem）",
             "工作项授权、发出 Work Offer、接受 Work Offer",
-            "通过正式 Work Proposal 提出的后代工作项",
+            "通过正式 Work Proposal 提出的下级工作项",
             "工作项阻塞与恢复",
         ),
         (
@@ -40,14 +40,15 @@ LOCALIZED_TERMINOLOGY = (
             "发出任务",
             "接受任务",
             "Mission/WorkItem",
+            "后代工作项",
         ),
     ),
     (
         "README.zh-TW.md",
         (
-            "子任務（Child Mission）",
+            "子任務（Child Mission，即獨立的 Mission，而非 WorkItem）",
             "工作項授權、發出 Work Offer、接受 Work Offer",
-            "透過正式 Work Proposal 提出的後代工作項",
+            "透過正式 Work Proposal 提出的下層工作項",
             "工作項受阻與復原",
         ),
         (
@@ -58,43 +59,70 @@ LOCALIZED_TERMINOLOGY = (
             "發出任務",
             "接受任務",
             "Mission/WorkItem",
+            "後代工作項",
         ),
     ),
     (
         "README.ja.md",
         (
-            "子ミッション（Child Mission）",
+            "サブタスク（Child Mission。独立した Mission であり、WorkItem ではない）",
             "Work Proposal を通じて提案する下位の WorkItem",
+            "セキュリティのサブタスク",
             "WorkItem のブロック／再開",
         ),
-        ("子 Mission", "子 security Mission", "sub-work", "work の block/resume"),
+        (
+            "子 Mission",
+            "子 security Mission",
+            "子ミッション",
+            "sub-work",
+            "work の block/resume",
+        ),
     ),
     (
         "README.es.md",
         (
-            "Mission hijas recursivas (Child Mission)",
-            "WorkItem descendiente propuesto formalmente",
+            "subtareas recursivas (Child Mission), cada una de ellas una Mission "
+            "independiente y no un WorkItem",
+            "WorkItem subordinado propuesto formalmente",
             "mediante una Work Proposal",
+            "una subtarea de seguridad",
             "WorkItem bloqueado",
         ),
-        ("Mission secundarias", "sub-work", "trabajo bloqueado"),
+        (
+            "Mission hija",
+            "Mission secundarias",
+            "WorkItem descendiente",
+            "sub-work",
+            "trabajo bloqueado",
+        ),
     ),
     (
         "README.fr.md",
         (
-            "Mission enfant récursives (Child Mission)",
-            "WorkItem descendant proposé formellement",
+            "sous-tâches récursives (Child Mission), chacune étant une Mission "
+            "indépendante et non un WorkItem",
+            "WorkItem subordonné proposé formellement",
             "au moyen d’une Work Proposal",
+            "une sous-tâche de sécurité",
             "WorkItem bloqué",
         ),
-        ("des Child Mission", "une Child Mission", "sous-travail", "du travail bloqué"),
+        (
+            "Mission enfant",
+            "des Child Mission",
+            "une Child Mission",
+            "WorkItem descendant",
+            "sous-travail",
+            "du travail bloqué",
+        ),
     ),
     (
         "README.de.md",
         (
-            "untergeordnete Missionen (Child Mission)",
+            "rekursive Unteraufgaben (Child Mission), jeweils eine eigenständige Mission "
+            "und kein WorkItem",
             "per Work Proposal vorgeschlagenes untergeordnetes WorkItem",
             "zwei gleichzeitige Softwareentwicklungs-Missionen",
+            "eine Unteraufgabe für die Sicherheitsprüfung",
             "Klärungen zwischen Workern",
             "zwei isolierte Capacity Slots",
             "blockiertes und wiederaufgenommenes WorkItem",
@@ -103,6 +131,8 @@ LOCALIZED_TERMINOLOGY = (
         (
             "rekursive Child Mission",
             "einer Child Mission",
+            "untergeordnete Mission",
+            "eine Unteraufgabe für Sicherheit",
             "Unterarbeit",
             "fortgesetzter Arbeit",
             "blockierten und fortgesetzten WorkItem",
