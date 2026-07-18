@@ -318,10 +318,17 @@ def _root_members(payload: str) -> tuple[dict[str, Any], dict[str, tuple[int, in
         if position >= length or payload[position] != ":":
             raise ValueError("frame JSON member has no colon")
         value_start = skip_whitespace(position + 1)
-        try:
-            value, value_end = decoder.raw_decode(payload, value_start)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"frame member {name!r} has invalid JSON") from error
+        if name == "command":
+            try:
+                value_end = _json_value_end(payload, value_start)
+            except (RecursionError, ValueError) as error:
+                raise ValueError(f"frame member {name!r} has invalid JSON") from error
+            value: Any = {}
+        else:
+            try:
+                value, value_end = decoder.raw_decode(payload, value_start)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"frame member {name!r} has invalid JSON") from error
         members[name] = value
         spans[name] = (value_start, value_end)
         position = skip_whitespace(value_end)
@@ -335,6 +342,124 @@ def _root_members(payload: str) -> tuple[dict[str, Any], dict[str, tuple[int, in
         if payload[position] != ",":
             raise ValueError("frame JSON members are not comma-separated")
         position = skip_whitespace(position + 1)
+
+
+def _json_value_end(payload: str, start: int) -> int:
+    """Return the exclusive end of one strict JSON value without materializing it."""
+
+    length = len(payload)
+
+    def skip_whitespace(position: int) -> int:
+        while position < length and payload[position] in " \t\r\n":
+            position += 1
+        return position
+
+    def scan_string(position: int) -> int:
+        if position >= length or payload[position] != '"':
+            raise ValueError("JSON string does not start with a quote")
+        position += 1
+        while position < length:
+            character = payload[position]
+            if character == '"':
+                return position + 1
+            if ord(character) < 0x20:
+                raise ValueError("JSON string contains an unescaped control character")
+            if character != "\\":
+                position += 1
+                continue
+            position += 1
+            if position >= length:
+                raise ValueError("JSON string has an incomplete escape")
+            escape = payload[position]
+            if escape in '"\\/bfnrt':
+                position += 1
+                continue
+            if escape != "u":
+                raise ValueError("JSON string has an invalid escape")
+            digits_end = position + 5
+            if digits_end > length or any(
+                digit not in "0123456789abcdefABCDEF"
+                for digit in payload[position + 1 : digits_end]
+            ):
+                raise ValueError("JSON string has an invalid Unicode escape")
+            position = digits_end
+        raise ValueError("JSON string is not closed")
+
+    def scan_number(position: int) -> int:
+        if payload[position] == "-":
+            position += 1
+            if position >= length:
+                raise ValueError("JSON number has no integer part")
+        if payload[position] == "0":
+            position += 1
+        elif payload[position] in "123456789":
+            position += 1
+            while position < length and payload[position] in "0123456789":
+                position += 1
+        else:
+            raise ValueError("JSON number has an invalid integer part")
+        if position < length and payload[position] == ".":
+            position += 1
+            fraction_start = position
+            while position < length and payload[position] in "0123456789":
+                position += 1
+            if position == fraction_start:
+                raise ValueError("JSON number has no fractional digits")
+        if position < length and payload[position] in "eE":
+            position += 1
+            if position < length and payload[position] in "+-":
+                position += 1
+            exponent_start = position
+            while position < length and payload[position] in "0123456789":
+                position += 1
+            if position == exponent_start:
+                raise ValueError("JSON number has no exponent digits")
+        return position
+
+    def scan_value(position: int) -> int:
+        if position >= length:
+            raise ValueError("JSON value is missing")
+        character = payload[position]
+        if character == '"':
+            return scan_string(position)
+        if character == "{":
+            position = skip_whitespace(position + 1)
+            if position < length and payload[position] == "}":
+                return position + 1
+            while True:
+                position = skip_whitespace(scan_string(position))
+                if position >= length or payload[position] != ":":
+                    raise ValueError("JSON object member has no colon")
+                position = skip_whitespace(position + 1)
+                position = skip_whitespace(scan_value(position))
+                if position >= length:
+                    raise ValueError("JSON object is not closed")
+                if payload[position] == "}":
+                    return position + 1
+                if payload[position] != ",":
+                    raise ValueError("JSON object members are not comma-separated")
+                position = skip_whitespace(position + 1)
+        if character == "[":
+            position = skip_whitespace(position + 1)
+            if position < length and payload[position] == "]":
+                return position + 1
+            while True:
+                position = skip_whitespace(scan_value(position))
+                if position >= length:
+                    raise ValueError("JSON array is not closed")
+                if payload[position] == "]":
+                    return position + 1
+                if payload[position] != ",":
+                    raise ValueError("JSON array values are not comma-separated")
+                position = skip_whitespace(position + 1)
+        if character == "-" or character in "0123456789":
+            return scan_number(position)
+        for literal in ("true", "false", "null"):
+            if payload.startswith(literal, position):
+                return position + len(literal)
+        raise ValueError("JSON value has an invalid token")
+
+    return scan_value(start)
 
 
 def encode_frame(frame: Frame) -> str:
