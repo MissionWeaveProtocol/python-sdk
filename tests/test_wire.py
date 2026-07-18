@@ -212,6 +212,19 @@ def test_received_command_frame_preserves_exact_nested_json_bytes() -> None:
     assert parsed.command_bytes == raw_command.encode()
 
 
+@pytest.mark.parametrize(
+    "raw_frame",
+    (
+        '{"frameId":"urn:missionweaveprotocol:frame:missing-version",'
+        '"frameType":"COMMAND","command":{}}',
+        '{"protocolVersion":"0.1","frameType":"COMMAND","command":{}}',
+    ),
+)
+def test_received_command_frame_requires_normative_envelope_members(raw_frame: str) -> None:
+    with pytest.raises(ValueError):
+        parse_received_frame(raw_frame)
+
+
 def test_deeply_nested_command_is_a_controlled_protocol_rejection() -> None:
     raw_command = "[" * 1100 + "null" + "]" * 1100
     raw_frame = (

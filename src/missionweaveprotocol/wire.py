@@ -120,6 +120,21 @@ class CommandFrame(FrameModel):
     command: dict[str, JsonValue]
 
 
+class _ReceivedCommandEnvelope(BaseModel):
+    """Required outer COMMAND members without defaults or nested-value decoding."""
+
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        extra="forbid",
+        populate_by_name=True,
+    )
+
+    protocol_version: Literal["0.1"]
+    frame_id: Identifier
+    frame_type: Literal["COMMAND"]
+    command: dict[str, JsonValue]
+
+
 class EventFrame(FrameModel):
     frame_type: Literal["EVENT"] = "EVENT"
     event: dict[str, JsonValue]
@@ -269,7 +284,7 @@ def parse_received_frame(payload: str | bytes) -> Frame | ReceivedCommandFrame:
     command_span = spans.get("command")
     envelope = dict(members)
     envelope["command"] = {}
-    validated = CommandFrame.model_validate(envelope)
+    validated = _ReceivedCommandEnvelope.model_validate(envelope)
     if command_span is None:
         raise ValueError("COMMAND frame has no command member")
     start, end = command_span
