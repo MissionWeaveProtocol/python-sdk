@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -11,17 +12,30 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from missionweaveprotocol.auth import AgentIdentity, AgentKeyRegistry, SessionAuthority
+from missionweaveprotocol import (
+    AgentRegistryKeyResolver,
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    SignedDocumentVerificationError,
+    VerificationStage,
+)
+from missionweaveprotocol.auth import (
+    AgentIdentity,
+    AgentKeyRegistry,
+    AuthenticationError,
+    SessionAuthority,
+    SessionGrant,
+    default_agent_key_id,
+)
 from missionweaveprotocol.canonical import canonical_bytes
 from missionweaveprotocol.core import Core, StaleSessionEpoch
-from missionweaveprotocol.crypto import generate_keypair, verify_canonical
+from missionweaveprotocol.crypto import generate_keypair
 from missionweaveprotocol.gateway import (
     CoreGatewayAdapter,
-    GatewaySchemaError,
     GroupGateway,
     UnknownCriticalExtension,
 )
-from missionweaveprotocol.ingress import CommandIngress, signing_hash
+from missionweaveprotocol.ingress import CommandIngress
 from missionweaveprotocol.models import (
     ActorType,
     AddMembershipPayload,
@@ -73,6 +87,72 @@ WORK_ID = "urn:missionweaveprotocol:work:resource-usage"
 SESSION_SECRET = b"x" * 32
 
 
+def _command_key_resolver(
+    *registrations: tuple[AgentIdentity, str],
+    service_registrations: tuple[tuple[str, str, str], ...] = (),
+) -> AgentRegistryKeyResolver:
+    bindings = [
+        {
+            "keyId": key_id,
+            "principal": {"type": "agent", "id": identity.agent_id},
+            "algorithm": "Ed25519",
+            "publicKey": identity.public_key,
+            "validFrom": "2000-01-01T00:00:00Z",
+            "validityHistory": [],
+        }
+        for identity, key_id in registrations
+    ]
+    bindings.extend(
+        {
+            "keyId": key_id,
+            "principal": {"type": "service", "id": principal_id},
+            "algorithm": "Ed25519",
+            "publicKey": public_key,
+            "validFrom": "2000-01-01T00:00:00Z",
+            "validityHistory": [],
+        }
+        for key_id, principal_id, public_key in service_registrations
+    )
+    return AgentRegistryKeyResolver(
+        json.dumps(
+            {
+                "organizationId": "urn:missionweaveprotocol:organization:gateway-tests",
+                "bindings": bindings,
+            },
+            separators=(",", ":"),
+        ).encode()
+    )
+
+
+def _session(
+    identity: AgentIdentity,
+    *,
+    session_epoch: int,
+    key_id: str = KEY_ID,
+    now: datetime | None = None,
+) -> SessionGrant:
+    selected_now = now or datetime.now(UTC)
+    return SessionGrant(
+        agent_id=identity.agent_id,
+        key_id=key_id,
+        protocol_version="0.1",
+        session_epoch=session_epoch,
+        issued_at=selected_now - timedelta(minutes=1),
+        expires_at=selected_now + timedelta(minutes=15),
+        token="test-session-token",
+    )
+
+
+def _raw_command_frame(command_bytes: bytes, *, frame_id: str) -> str:
+    return (
+        '{"protocolVersion":"0.1","frameId":"'
+        + frame_id
+        + '","frameType":"COMMAND","command":'
+        + command_bytes.decode("utf-8")
+        + "}"
+    )
+
+
 async def _perform_with_current_membership(core: Core, command: Command) -> Event:
     if (
         command.group_id is not None
@@ -114,10 +194,11 @@ class FakeCore:
     async def perform(
         self,
         *,
-        actor: str,
-        session_epoch: int,
-        command: dict[str, Any],
+        session: SessionGrant,
+        command_bytes: bytes,
     ) -> dict[str, Any]:
+        command = json.loads(command_bytes)
+        assert isinstance(command, dict)
         group_id = str(command["groupId"])
         sequence = 1 + sum(event["groupId"] == group_id for event in self.events)
         payload = command.get("payload", {})
@@ -133,12 +214,12 @@ class FakeCore:
             "sequence": sequence,
             "aggregateRevision": sequence,
             "kind": emitted_kind,
-            "actor": {"type": "agent", "id": actor},
+            "actor": {"type": "agent", "id": session.agent_id},
             "cause": {"type": "command", "id": command["actionId"]},
             "correlationId": command["correlationId"],
             "occurredAt": "2026-07-15T00:00:01Z",
             "conversationId": command.get("conversationId"),
-            "payload": {"sessionEpoch": session_epoch},
+            "payload": {"sessionEpoch": session.session_epoch},
             "acceptedBy": {
                 "type": "service",
                 "id": "urn:missionweaveprotocol:service:group-gateway",
@@ -168,12 +249,17 @@ class FakeCore:
         ]
 
 
-def _authenticate(socket: Any, identity: AgentIdentity) -> WelcomeFrame:
+def _authenticate(
+    socket: Any,
+    identity: AgentIdentity,
+    *,
+    key_id: str = KEY_ID,
+) -> WelcomeFrame:
     socket.send_text(
         encode_frame(
             HelloFrame(
                 agent_id=identity.agent_id,
-                key_id=KEY_ID,
+                key_id=key_id,
                 client_nonce="Y2xpZW50LW5vbmNl",
             )
         )
@@ -184,7 +270,7 @@ def _authenticate(socket: Any, identity: AgentIdentity) -> WelcomeFrame:
         encode_frame(
             AuthFrame(
                 agent_id=identity.agent_id,
-                key_id=KEY_ID,
+                key_id=key_id,
                 client_nonce=challenge.client_nonce,
                 server_nonce=challenge.server_nonce,
                 challenge_signature=identity.sign(_decode_base64url(challenge.challenge)),
@@ -500,13 +586,12 @@ def test_command_ingress_preserves_signed_provenance() -> None:
         cooperation_override_grant_id="urn:missionweaveprotocol:override:context-only",
         expected_revision=0,
     )
-    verified_hash = signing_hash(document)
-    CommandIngress().validate(document)
-
-    projected = CommandIngress.project_verified(
-        document,
-        verified_signing_hash=verified_hash,
+    ingress = CommandIngress()
+    verified = ingress.verify(
+        canonical_bytes(document),
+        _command_key_resolver((identity, KEY_ID)),
     )
+    projected = ingress.project_verified(verified)
 
     assert projected.coordinator_epoch == 4
     assert projected.correlation_id == document["correlationId"]
@@ -519,7 +604,7 @@ def test_command_ingress_preserves_signed_provenance() -> None:
     assert projected.signature is not None
     assert projected.signature.key_id == KEY_ID
     assert projected.signature.value == document["signature"]["value"]
-    assert projected.verified_signing_hash == verified_hash
+    assert projected.verified_signing_hash == verified.signing_hash
 
 
 async def _add_active_member(
@@ -635,56 +720,215 @@ def test_hello_rejects_an_unregistered_key_id() -> None:
 
 def test_command_key_id_must_match_the_authenticated_key() -> None:
     identity = AgentIdentity.generate(AGENT_ID)
+    alternate_identity = AgentIdentity.generate(AGENT_ID)
+    alternate_key_id = "urn:missionweaveprotocol:key:other"
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    gateway = GroupGateway(FakeCore(), SessionAuthority(keys, secret=SESSION_SECRET))
+    adapter = CoreGatewayAdapter(
+        Core(InMemoryStore()),
+        keys,
+        _command_key_resolver(
+            (identity, KEY_ID),
+            (alternate_identity, alternate_key_id),
+        ),
+    )
+    command = _signed_command(
+        alternate_identity,
+        action_number=2,
+        session_epoch=1,
+        signature_key_id=alternate_key_id,
+    )
 
-    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
-        welcome = _authenticate(socket, identity)
-        socket.send_text(
-            encode_frame(
-                CommandFrame(
-                    command=_signed_command(
-                        identity,
-                        action_number=2,
-                        session_epoch=welcome.session_epoch,
-                        signature_key_id="urn:missionweaveprotocol:key:other",
-                    )
-                )
+    with pytest.raises(AuthenticationError, match="key ID"):
+        asyncio.run(
+            adapter.perform(
+                session=_session(identity, session_epoch=1),
+                command_bytes=canonical_bytes(command),
             )
         )
-        rejected = parse_frame(socket.receive_text())
-
-    assert isinstance(rejected, ErrorFrame)
-    assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
-    assert "key ID" in rejected.error.message
 
 
 def test_command_timestamp_must_be_inside_the_authenticated_session() -> None:
     identity = AgentIdentity.generate(AGENT_ID)
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    gateway = GroupGateway(FakeCore(), SessionAuthority(keys, secret=SESSION_SECRET))
+    adapter = CoreGatewayAdapter(
+        Core(InMemoryStore()),
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+    )
+    command = _signed_command(
+        identity,
+        action_number=3,
+        session_epoch=1,
+        issued_at="2000-01-01T00:00:00Z",
+    )
+
+    with pytest.raises(AuthenticationError, match="outside"):
+        asyncio.run(
+            adapter.perform(
+                session=_session(identity, session_epoch=1),
+                command_bytes=canonical_bytes(command),
+            )
+        )
+
+
+def test_nested_duplicate_command_member_is_a_non_oracular_protocol_failure() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    core = Core(InMemoryStore())
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _register_card(core, _card(identity))
+        yield
+
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=FastAPI(lifespan=lifespan),
+    )
 
     with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
         welcome = _authenticate(socket, identity)
+        command = _signed_command(
+            identity,
+            action_number=4,
+            session_epoch=welcome.session_epoch,
+        )
+        raw = json.dumps(command, separators=(",", ":")).replace(
+            '"content":"message 4"',
+            '"content":"message 4","content":"duplicate"',
+        )
         socket.send_text(
-            encode_frame(
-                CommandFrame(
-                    command=_signed_command(
-                        identity,
-                        action_number=3,
-                        session_epoch=welcome.session_epoch,
-                        issued_at="2000-01-01T00:00:00Z",
-                    )
-                )
+            _raw_command_frame(
+                raw.encode(),
+                frame_id="urn:missionweaveprotocol:frame:duplicate-command",
             )
         )
         rejected = parse_frame(socket.receive_text())
 
     assert isinstance(rejected, ErrorFrame)
-    assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
-    assert "outside" in rejected.error.message
+    assert rejected.error.code is ErrorCode.PROTOCOL_VIOLATION
+    assert rejected.error.message == "signed document rejected"
+    assert rejected.error.details is None
+
+
+def test_unsupported_command_algorithm_uses_codec_schema_wire_error() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    core = Core(InMemoryStore())
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await _register_card(core, _card(identity))
+        yield
+
+    gateway = GroupGateway(
+        adapter,
+        SessionAuthority(keys, secret=SESSION_SECRET),
+        app=FastAPI(lifespan=lifespan),
+    )
+
+    with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
+        welcome = _authenticate(socket, identity)
+        command = _signed_command(
+            identity,
+            action_number=7,
+            session_epoch=welcome.session_epoch,
+        )
+        signature = command["signature"]
+        assert isinstance(signature, dict)
+        signature["algorithm"] = "RSA"
+        socket.send_text(
+            _raw_command_frame(
+                json.dumps(command, separators=(",", ":")).encode(),
+                frame_id="urn:missionweaveprotocol:frame:unsupported-algorithm",
+            )
+        )
+        rejected = parse_frame(socket.receive_text())
+
+    assert isinstance(rejected, ErrorFrame)
+    assert rejected.error.code is ErrorCode.SCHEMA_VALIDATION_FAILED
+    assert rejected.error.message == "signed document rejected"
+    assert rejected.error.details is None
+
+
+@pytest.mark.asyncio
+async def test_out_of_binary64_command_number_reaches_codec_canonicalization() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
+    adapter = CoreGatewayAdapter(
+        Core(InMemoryStore()),
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+    )
+    command = _signed_command_with_extensions(
+        identity,
+        action_number=5,
+        session_epoch=1,
+        extensions={
+            "https://profiles.example/numeric": {
+                "version": "1.0.0",
+                "critical": False,
+                "data": {"probe": 0},
+            }
+        },
+    )
+    raw = json.dumps(command, separators=(",", ":")).replace('"probe":0', '"probe":1e400')
+
+    with pytest.raises(SignedDocumentVerificationError) as captured:
+        await adapter.perform(
+            session=_session(identity, session_epoch=1),
+            command_bytes=raw.encode(),
+        )
+
+    assert captured.value.protected_error.stage is VerificationStage.CANONICALIZATION
+
+
+@pytest.mark.asyncio
+async def test_key_revoked_before_admission_is_rejected_after_codec_verification() -> None:
+    identity = AgentIdentity.generate(AGENT_ID)
+    keys = AgentKeyRegistry()
+    now = datetime.now(UTC)
+    keys.register(
+        identity.agent_id,
+        identity.public_key,
+        key_id=KEY_ID,
+        valid_from=now - timedelta(hours=1),
+    )
+    adapter = CoreGatewayAdapter(
+        Core(InMemoryStore()),
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+        clock=lambda: now,
+    )
+    command = _signed_command(
+        identity,
+        action_number=6,
+        session_epoch=1,
+        issued_at=(now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+    )
+    keys.revoke(identity.agent_id, KEY_ID, revoked_at=now - timedelta(seconds=1))
+
+    with pytest.raises(AuthenticationError, match="revoked"):
+        await adapter.perform(
+            session=_session(identity, session_epoch=1, now=now),
+            command_bytes=canonical_bytes(command),
+        )
 
 
 def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
@@ -694,7 +938,7 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
     core = Core(store)
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -763,9 +1007,8 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
     with pytest.raises(StaleSessionEpoch):
         asyncio.run(
             adapter.perform(
-                actor=identity.agent_id,
-                session_epoch=original.session_epoch,
-                command=stale_command,
+                session=_session(identity, session_epoch=original.session_epoch),
+                command_bytes=canonical_bytes(stale_command),
             )
         )
 
@@ -775,7 +1018,7 @@ def test_real_gateway_preserves_command_authority_and_provenance() -> None:
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -838,7 +1081,12 @@ def test_real_gateway_preserves_command_authority_and_provenance() -> None:
     assert stored.signature is not None
     assert stored.signature.key_id == KEY_ID
     assert stored.signature.value == command["signature"]["value"]
-    assert stored.verified_signing_hash == signing_hash(command)
+    verified = SignedDocumentCodec().verify(
+        SignedDocumentKind.COMMAND,
+        canonical_bytes(command),
+        _command_key_resolver((identity, KEY_ID)),
+    )
+    assert stored.verified_signing_hash == verified.signing_hash
     assert renewed.command_hash == stored.verified_signing_hash
 
 
@@ -853,6 +1101,7 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
     adapter = CoreGatewayAdapter(
         core,
         keys,
+        _command_key_resolver((identity, KEY_ID)),
         authority_key_id=authority_key_id,
         authority_private_key=authority_private_key,
     )
@@ -952,13 +1201,21 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
         event_signature = usage_recorded.event["signature"]
         assert isinstance(event_signature, dict)
         assert event_signature["keyId"] == authority_key_id
-        unsigned_event = dict(usage_recorded.event)
-        del unsigned_event["signature"]
-        assert verify_canonical(
-            unsigned_event,
-            str(event_signature["value"]),
-            authority_public_key,
+        verified_event = SignedDocumentCodec().verify(
+            SignedDocumentKind.EVENT,
+            json.dumps(usage_recorded.event, separators=(",", ":")).encode(),
+            _command_key_resolver(
+                (identity, KEY_ID),
+                service_registrations=(
+                    (
+                        authority_key_id,
+                        "urn:missionweaveprotocol:service:group-gateway",
+                        authority_public_key,
+                    ),
+                ),
+            ),
         )
+        assert verified_event.resolved_key.principal.type == "service"
 
         socket.send_text(
             encode_frame(
@@ -995,6 +1252,8 @@ def test_real_gateway_records_signed_usage_maps_overflow_and_rejects_tampering()
             rejected = parse_frame(tampered_socket.receive_text())
             assert isinstance(rejected, ErrorFrame)
             assert rejected.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+            assert rejected.error.message == "signed document rejected"
+            assert rejected.error.details is None
 
 
 def test_gateway_restart_seeds_token_epoch_from_authoritative_core() -> None:
@@ -1003,7 +1262,7 @@ def test_gateway_restart_seeds_token_epoch_from_authoritative_core() -> None:
     asyncio.run(_register_card(core, _card(identity)))
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
 
     first = GroupGateway(adapter, SessionAuthority(keys, secret=SESSION_SECRET))
     with TestClient(first.app) as client, client.websocket_connect("/ws") as socket:
@@ -1099,9 +1358,17 @@ def test_subscription_denies_non_member_without_disclosing_group_existence() -> 
     intruder = AgentIdentity.generate("urn:missionweaveprotocol:agent:intruder")
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
-    for identity in (coordinator_identity, intruder):
-        keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    intruder_key_id = default_agent_key_id(intruder.agent_id)
+    keys.register(coordinator_identity.agent_id, coordinator_identity.public_key, key_id=KEY_ID)
+    keys.register(intruder.agent_id, intruder.public_key, key_id=intruder_key_id)
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        _command_key_resolver(
+            (coordinator_identity, KEY_ID),
+            (intruder, intruder_key_id),
+        ),
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -1117,7 +1384,7 @@ def test_subscription_denies_non_member_without_disclosing_group_existence() -> 
     )
 
     with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
-        _authenticate(socket, intruder)
+        _authenticate(socket, intruder, key_id=intruder_key_id)
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
@@ -1140,9 +1407,17 @@ def test_late_member_replay_starts_after_membership_visibility_sequence() -> Non
     late_member = _card(late_identity)
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
-    for identity in (coordinator_identity, late_identity):
-        keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    late_key_id = default_agent_key_id(late_identity.agent_id)
+    keys.register(coordinator_identity.agent_id, coordinator_identity.public_key, key_id=KEY_ID)
+    keys.register(late_identity.agent_id, late_identity.public_key, key_id=late_key_id)
+    adapter = CoreGatewayAdapter(
+        core,
+        keys,
+        _command_key_resolver(
+            (coordinator_identity, KEY_ID),
+            (late_identity, late_key_id),
+        ),
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -1163,7 +1438,7 @@ def test_late_member_replay_starts_after_membership_visibility_sequence() -> Non
     )
 
     with TestClient(gateway.app) as client, client.websocket_connect("/ws") as socket:
-        _authenticate(socket, late_identity)
+        _authenticate(socket, late_identity, key_id=late_key_id)
         socket.send_text(
             encode_frame(
                 SubscribeFrame(
@@ -1185,7 +1460,7 @@ def test_websocket_disconnect_reconnect_replays_only_after_durable_ack() -> None
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -1269,14 +1544,18 @@ async def test_adapter_schema_validates_command_before_translation() -> None:
     identity = AgentIdentity.generate(AGENT_ID)
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(Core(InMemoryStore()), keys)
+    adapter = CoreGatewayAdapter(
+        Core(InMemoryStore()),
+        keys,
+        _command_key_resolver((identity, KEY_ID)),
+    )
 
-    with pytest.raises(GatewaySchemaError, match=r"command\.schema\.json"):
+    with pytest.raises(SignedDocumentVerificationError) as captured:
         await adapter.perform(
-            actor=identity.agent_id,
-            session_epoch=1,
-            command={"protocolVersion": "0.1"},
+            session=_session(identity, session_epoch=1),
+            command_bytes=b'{"protocolVersion":"0.1"}',
         )
+    assert captured.value.protected_error.stage is VerificationStage.SCHEMA
 
 
 @pytest.mark.asyncio
@@ -1286,7 +1565,7 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
     extensions = {
         "https://profiles.example/audit": {
             "version": "1.2.3",
@@ -1313,9 +1592,8 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
         extensions=extensions,
     )
     event = await adapter.perform(
-        actor=identity.agent_id,
-        session_epoch=1,
-        command=command,
+        session=_session(identity, session_epoch=1),
+        command_bytes=canonical_bytes(command),
     )
 
     assert event["kind"] == "message.posted"
@@ -1331,9 +1609,8 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
     assert event["extensions"] == extensions
 
     duplicate = await adapter.perform(
-        actor=identity.agent_id,
-        session_epoch=1,
-        command=command,
+        session=_session(identity, session_epoch=1),
+        command_bytes=canonical_bytes(command),
     )
     sequence = event["sequence"]
     assert isinstance(sequence, int)
@@ -1355,7 +1632,7 @@ def test_unknown_critical_extension_returns_specific_wire_error() -> None:
     core = Core(InMemoryStore())
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
-    adapter = CoreGatewayAdapter(core, keys)
+    adapter = CoreGatewayAdapter(core, keys, _command_key_resolver((identity, KEY_ID)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -1414,6 +1691,7 @@ async def test_critical_extension_requires_exact_configured_profile_version() ->
     adapter = CoreGatewayAdapter(
         core,
         keys,
+        _command_key_resolver((identity, KEY_ID)),
         supported_profiles={profile_uri: "2.0.0"},
     )
 
@@ -1427,13 +1705,14 @@ async def test_critical_extension_requires_exact_configured_profile_version() ->
         }
     }
     accepted = await adapter.perform(
-        actor=identity.agent_id,
-        session_epoch=1,
-        command=_signed_command_with_extensions(
-            identity,
-            action_number=92,
-            session_epoch=1,
-            extensions=accepted_extensions,
+        session=_session(identity, session_epoch=1),
+        command_bytes=canonical_bytes(
+            _signed_command_with_extensions(
+                identity,
+                action_number=92,
+                session_epoch=1,
+                extensions=accepted_extensions,
+            )
         ),
     )
 
@@ -1441,19 +1720,20 @@ async def test_critical_extension_requires_exact_configured_profile_version() ->
 
     with pytest.raises(UnknownCriticalExtension) as caught:
         await adapter.perform(
-            actor=identity.agent_id,
-            session_epoch=1,
-            command=_signed_command_with_extensions(
-                identity,
-                action_number=93,
-                session_epoch=1,
-                extensions={
-                    profile_uri: {
-                        "version": "2.0.1",
-                        "critical": True,
-                        "data": {"policy": "required"},
-                    }
-                },
+            session=_session(identity, session_epoch=1),
+            command_bytes=canonical_bytes(
+                _signed_command_with_extensions(
+                    identity,
+                    action_number=93,
+                    session_epoch=1,
+                    extensions={
+                        profile_uri: {
+                            "version": "2.0.1",
+                            "critical": True,
+                            "data": {"policy": "required"},
+                        }
+                    },
+                )
             ),
         )
 

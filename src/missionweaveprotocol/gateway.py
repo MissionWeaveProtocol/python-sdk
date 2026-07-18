@@ -10,10 +10,10 @@ import secrets
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Protocol, cast
 from uuid import uuid4
 
+from cryptography.hazmat.primitives import serialization
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from jsonschema import ValidationError as JSONSchemaValidationError
 from pydantic import JsonValue
@@ -26,15 +26,13 @@ from missionweaveprotocol.auth import (
     SessionGrant,
 )
 from missionweaveprotocol.canonical import canonical_hash, canonical_json
-from missionweaveprotocol.conformance import SchemaCatalog
 from missionweaveprotocol.core import Core, InvalidCommand, MissionWeaveProtocolError
 from missionweaveprotocol.crypto import (
+    Ed25519SigningKey,
     PrivateKeyLike,
     generate_keypair,
-    sign_canonical,
-    verify_canonical,
 )
-from missionweaveprotocol.ingress import CommandIngress, signing_document, signing_hash
+from missionweaveprotocol.ingress import CommandIngress
 from missionweaveprotocol.models import (
     ActorType,
     Command,
@@ -52,22 +50,31 @@ from missionweaveprotocol.offline import (
     OFFLINE_EXECUTION_EXTENSION,
     OFFLINE_EXECUTION_EXTENSION_VERSION,
 )
+from missionweaveprotocol.signed_documents import (
+    KeyResolver,
+    ProtectedInstant,
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    SignedDocumentVerificationError,
+    VerifiedSignedDocument,
+)
 from missionweaveprotocol.wire import (
     AckFrame,
     AttentionFilter,
     AuthFrame,
     ChallengeFrame,
-    CommandFrame,
     ErrorDocument,
     ErrorFrame,
     EventFrame,
     Frame,
     HelloFrame,
     PingFrame,
+    ReceivedCommandFrame,
     SubscribeFrame,
     WelcomeFrame,
     encode_frame,
     parse_frame,
+    parse_received_frame,
 )
 from missionweaveprotocol.wire import (
     ErrorCode as WireErrorCode,
@@ -121,9 +128,8 @@ class GatewayCore(Protocol):
     async def perform(
         self,
         *,
-        actor: str,
-        session_epoch: int,
-        command: dict[str, JsonValue],
+        session: SessionGrant,
+        command_bytes: bytes,
     ) -> dict[str, JsonValue]: ...
 
     async def replay(
@@ -147,19 +153,25 @@ class CoreGatewayAdapter:
         self,
         core: Core,
         command_keys: AgentKeyRegistry,
+        command_key_resolver: KeyResolver,
         *,
-        schema_root: Path | None = None,
         authority_key_id: str = "urn:missionweaveprotocol:key:group-gateway",
         authority_private_key: PrivateKeyLike | None = None,
         clock: Clock | None = None,
         supported_profiles: Mapping[str, str] | None = None,
+        codec: SignedDocumentCodec | None = None,
     ) -> None:
         self._core = core
         self._command_keys = command_keys
-        self._schemas = SchemaCatalog(schema_root)
-        self._ingress = CommandIngress(self._schemas)
+        self._command_key_resolver = command_key_resolver
+        self._codec = codec or SignedDocumentCodec()
+        self._ingress = CommandIngress(self._codec)
         self._authority_key_id = authority_key_id
         self._authority_private_key = authority_private_key or generate_keypair()[0]
+        self._authority_signing_key = Ed25519SigningKey(
+            key_id=authority_key_id,
+            private_key=self._authority_private_key,
+        )
         self._clock = clock or (lambda: datetime.now(UTC))
         self._supported_profiles = {
             OFFLINE_EXECUTION_EXTENSION: OFFLINE_EXECUTION_EXTENSION_VERSION,
@@ -211,19 +223,12 @@ class CoreGatewayAdapter:
     async def perform(
         self,
         *,
-        actor: str,
-        session_epoch: int,
-        command: dict[str, JsonValue],
+        session: SessionGrant,
+        command_bytes: bytes,
     ) -> dict[str, JsonValue]:
-        self._validate_command_schema(command)
-        verified_signing_hash = self._verify_command_identity(command, actor, session_epoch)
-        await self._verify_command_membership(command, actor)
-        self._verify_command_extensions(command)
+        verified = self._ingress.verify(command_bytes, self._command_key_resolver)
         try:
-            parsed = self._ingress.project_verified(
-                command,
-                verified_signing_hash=verified_signing_hash,
-            )
+            parsed = self._ingress.project_verified(verified)
         except (KeyError, ValueError, PydanticValidationError) as error:
             raise InvalidCommand(
                 "normative Command cannot be executed by the reference Core",
@@ -233,6 +238,11 @@ class CoreGatewayAdapter:
                     else str(error)
                 ),
             ) from error
+        accepted_at = self._now()
+        self._verify_command_session(verified, parsed, session, accepted_at)
+        self._verify_current_command_key(verified, session, accepted_at)
+        await self._verify_command_membership(parsed, session.agent_id)
+        self._verify_command_extensions(parsed)
         event = await self._core.perform(parsed)
         return self._translate_event(event)
 
@@ -260,61 +270,59 @@ class CoreGatewayAdapter:
         events = await self._core.replay(group_id, after=effective_after)
         return [self._translate_event(event) for event in events]
 
-    def _validate_command_schema(self, command: dict[str, JsonValue]) -> None:
-        try:
-            self._ingress.validate(command)
-        except JSONSchemaValidationError as error:
-            raise GatewaySchemaError(
-                "Command does not conform to command.schema.json",
-                details={
-                    "path": "/".join(str(item) for item in error.absolute_path),
-                    "reason": error.message,
-                },
-            ) from error
-
-    def _verify_command_identity(
+    def _verify_command_session(
         self,
-        command: dict[str, JsonValue],
-        actor: str,
-        session_epoch: int,
-    ) -> str:
-        command_actor = command.get("actor")
-        if not isinstance(command_actor, dict):
-            raise GatewaySchemaError("Command actor must be an object")
-        if command_actor.get("type") != "agent" or command_actor.get("id") != actor:
+        verified: VerifiedSignedDocument,
+        command: Command,
+        session: SessionGrant,
+        accepted_at: datetime,
+    ) -> None:
+        if command.actor.type is not ActorType.AGENT or command.actor.id != session.agent_id:
             raise AuthenticationError("Command actor does not match the authenticated Agent")
-        if command.get("sessionEpoch") != session_epoch:
+        if command.session_epoch != session.session_epoch:
             raise AuthenticationError("Command epoch does not match the authenticated session")
-        signature = command.get("signature")
-        if not isinstance(signature, dict):
-            raise GatewaySchemaError("Command signature must be an Ed25519 signature object")
-        if signature.get("algorithm") != "Ed25519":
-            raise GatewaySchemaError("Command signature must use Ed25519")
-        key_id = signature.get("keyId")
-        created_at_value = signature.get("createdAt")
-        signature_value = signature.get("value")
-        if (
-            not isinstance(key_id, str)
-            or not isinstance(created_at_value, str)
-            or not isinstance(signature_value, str)
+        if command.protocol_version != session.protocol_version:
+            raise AuthenticationError(
+                "Command protocol version does not match the authenticated session"
+            )
+        if verified.signature.key_id != session.key_id:
+            raise AuthenticationError("Command key ID does not match the authenticated session")
+        protected = verified.protected_time.instant
+        if protected < _datetime_instant(session.issued_at) or protected >= _datetime_instant(
+            session.expires_at
         ):
-            raise GatewaySchemaError("Command signature must be an Ed25519 signature object")
-        created_at = _parse_timestamp(created_at_value, field="Command signature createdAt")
-        signing_payload = signing_document(command)
-        public_key = self._command_keys.resolve(actor, key_id, at=created_at)
-        self._command_keys.resolve(actor, key_id, at=self._now())
-        if not verify_canonical(signing_payload, signature_value, public_key):
-            raise AuthenticationError("durable Command signature is invalid")
-        return signing_hash(command)
+            raise AuthenticationError("Command timestamp is outside the authenticated session")
+        if protected > _datetime_instant(accepted_at):
+            raise AuthenticationError("Command timestamp is in the future")
+
+    def _verify_current_command_key(
+        self,
+        verified: VerifiedSignedDocument,
+        session: SessionGrant,
+        accepted_at: datetime,
+    ) -> None:
+        current_key = self._command_keys.resolve(
+            session.agent_id,
+            verified.signature.key_id,
+            at=accepted_at,
+        )
+        current_bytes = current_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        if current_bytes != verified.resolved_key.public_key_bytes:
+            raise AuthenticationError(
+                "Command signing key does not match the authenticated session"
+            )
 
     async def _verify_command_membership(
         self,
-        command: dict[str, JsonValue],
+        command: Command,
         actor: str,
     ) -> None:
-        group_id = command.get("groupId")
-        membership_epoch = command.get("membershipEpoch")
-        if not isinstance(group_id, str) or not isinstance(membership_epoch, int):
+        group_id = command.group_id
+        membership_epoch = command.membership_epoch
+        if group_id is None or membership_epoch is None:
             raise GatewaySchemaError("Command requires Group and Membership epochs")
         membership = await self._core.query(
             Query(
@@ -324,10 +332,9 @@ class CoreGatewayAdapter:
                 actor_type=ActorType.AGENT,
             )
         )
-        kind = command.get("kind")
         allowed_statuses = (
             {MembershipStatus.ACTIVE, MembershipStatus.PROVISIONAL}
-            if kind == CommandKind.ACCEPT_WORK_OFFER.value
+            if command.kind is CommandKind.ACCEPT_WORK_OFFER
             else {MembershipStatus.ACTIVE}
         )
         if not isinstance(membership, Membership) or membership.status not in allowed_statuses:
@@ -335,19 +342,13 @@ class CoreGatewayAdapter:
         if membership.epoch != membership_epoch:
             raise AuthenticationError("Command carries a stale Membership epoch")
 
-    def _verify_command_extensions(self, command: dict[str, JsonValue]) -> None:
-        extensions = command.get("extensions")
-        if extensions is None:
+    def _verify_command_extensions(self, command: Command) -> None:
+        extensions = command.extensions
+        if not extensions:
             return
-        if not isinstance(extensions, dict):
-            raise GatewaySchemaError("Command extensions must be an object")
         for profile_uri, envelope in extensions.items():
-            if not isinstance(profile_uri, str) or not isinstance(envelope, dict):
-                raise GatewaySchemaError("Command Extension Profile envelope is invalid")
-            version = envelope.get("version")
-            critical = envelope.get("critical")
-            if not isinstance(version, str) or not isinstance(critical, bool):
-                raise GatewaySchemaError("Command Extension Profile envelope is invalid")
+            version = envelope.version
+            critical = envelope.critical
             supported_version = self._supported_profiles.get(profile_uri)
             if critical and supported_version != version:
                 raise UnknownCriticalExtension(profile_uri, version, supported_version)
@@ -397,20 +398,20 @@ class CoreGatewayAdapter:
                 dict[str, JsonValue],
                 event.model_dump(mode="json", by_alias=True, include={"extensions"})["extensions"],
             )
-        signature_value = sign_canonical(document, self._authority_private_key)
-        document["signature"] = {
-            "algorithm": "Ed25519",
-            "keyId": self._authority_key_id,
-            "createdAt": occurred_at,
-            "value": signature_value,
-        }
         try:
-            self._schemas.validate("event.schema.json", document)
-        except JSONSchemaValidationError as error:
+            signed = self._codec.sign(
+                SignedDocumentKind.EVENT,
+                document,
+                self._authority_signing_key,
+            )
+        except ValueError as error:
             raise RuntimeError(
-                f"Core Event cannot be represented by event.schema.json: {error.message}"
+                f"Core Event cannot be represented by event.schema.json: {error}"
             ) from error
-        return document
+        value = json.loads(signed.canonical_document_bytes)
+        if not isinstance(value, dict):
+            raise RuntimeError("signed Event is not a JSON object")
+        return cast(dict[str, JsonValue], value)
 
     @staticmethod
     def _actor_document(actor: Principal) -> dict[str, JsonValue]:
@@ -497,7 +498,7 @@ class GroupGateway:
             async with self._connections_lock:
                 self._connections[id(websocket)] = connection
             while True:
-                frame = parse_frame(await websocket.receive_text())
+                frame = parse_received_frame(await websocket.receive_text())
                 await self._dispatch(connection, frame)
         except WebSocketDisconnect:
             pass
@@ -557,7 +558,11 @@ class GroupGateway:
         )
         return _Connection(websocket=websocket, grant=grant)
 
-    async def _dispatch(self, connection: _Connection, frame: Frame) -> None:
+    async def _dispatch(
+        self,
+        connection: _Connection,
+        frame: Frame | ReceivedCommandFrame,
+    ) -> None:
         if isinstance(frame, SubscribeFrame):
             for requested in frame.groups:
                 after = max(
@@ -578,13 +583,11 @@ class GroupGateway:
                 connection.groups[requested.group_id] = requested.attention
             return
 
-        if isinstance(frame, CommandFrame):
+        if isinstance(frame, ReceivedCommandFrame):
             grant = self._sessions.verify_session(connection.grant.token)
-            self._bind_command_to_session(frame.command, grant)
             event = await self._core.perform(
-                actor=grant.agent_id,
-                session_epoch=grant.session_epoch,
-                command=frame.command,
+                session=grant,
+                command_bytes=frame.command_bytes,
             )
             await self._fanout(event)
             return
@@ -611,32 +614,6 @@ class GroupGateway:
             return
 
         raise ValueError(f"frame {type(frame).__name__} is not valid after authentication")
-
-    def _bind_command_to_session(
-        self,
-        command: dict[str, JsonValue],
-        grant: SessionGrant,
-    ) -> None:
-        if command.get("protocolVersion") != grant.protocol_version:
-            raise AuthenticationError(
-                "Command protocol version does not match the authenticated session"
-            )
-        signature = command.get("signature")
-        if not isinstance(signature, dict):
-            raise GatewaySchemaError("Command signature must be an Ed25519 signature object")
-        if signature.get("keyId") != grant.key_id:
-            raise AuthenticationError("Command key ID does not match the authenticated session")
-        issued_at = _parse_timestamp(command.get("issuedAt"), field="Command issuedAt")
-        created_at = _parse_timestamp(
-            signature.get("createdAt"),
-            field="Command signature createdAt",
-        )
-        if created_at != issued_at:
-            raise AuthenticationError("Command signature createdAt does not match Command issuedAt")
-        if issued_at < grant.issued_at or issued_at >= grant.expires_at:
-            raise AuthenticationError("Command timestamp is outside the authenticated session")
-        if issued_at > self._now():
-            raise AuthenticationError("Command timestamp is in the future")
 
     async def _fanout(self, event: dict[str, JsonValue]) -> None:
         raw_group_id = event.get("groupId")
@@ -673,6 +650,11 @@ class GroupGateway:
 
     async def _send_error(self, websocket: WebSocket, error: Exception) -> None:
         code = _wire_error_code(error)
+        message = str(error) or type(error).__name__
+        retryable = False
+        if isinstance(error, SignedDocumentVerificationError):
+            message = error.wire_error.message
+            retryable = error.wire_error.retryable
         details = getattr(error, "details", {})
         normalized_details = cast(
             dict[str, JsonValue],
@@ -684,8 +666,8 @@ class GroupGateway:
                     ErrorFrame(
                         error=ErrorDocument(
                             code=code,
-                            message=str(error) or type(error).__name__,
-                            retryable=False,
+                            message=message,
+                            retryable=retryable,
                             occurred_at=self._now(),
                             details=normalized_details or None,
                         )
@@ -703,6 +685,8 @@ class GroupGateway:
 
 
 def _wire_error_code(error: Exception) -> WireErrorCode:
+    if isinstance(error, SignedDocumentVerificationError):
+        return error.wire_error.code
     if isinstance(error, UnknownCriticalExtension):
         return WireErrorCode.UNKNOWN_CRITICAL_EXTENSION
     if isinstance(error, GatewaySchemaError | PydanticValidationError | JSONSchemaValidationError):
@@ -736,16 +720,14 @@ def _wire_error_code(error: Exception) -> WireErrorCode:
     return WireErrorCode.INTERNAL_ERROR
 
 
-def _parse_timestamp(value: object, *, field: str) -> datetime:
-    if not isinstance(value, str):
-        raise GatewaySchemaError(f"{field} must be an RFC 3339 timestamp")
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError as error:
-        raise GatewaySchemaError(f"{field} must be an RFC 3339 timestamp") from error
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise GatewaySchemaError(f"{field} must include a timezone")
-    return parsed.astimezone(UTC)
+def _datetime_instant(value: datetime) -> ProtectedInstant:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise AuthenticationError("session timestamps must include a timezone")
+    utc = value.astimezone(UTC)
+    epoch = datetime(1970, 1, 1, tzinfo=UTC)
+    delta = utc - epoch
+    fraction = f"{utc.microsecond:06d}".rstrip("0")
+    return ProtectedInstant(delta.days * 86_400 + delta.seconds, fraction)
 
 
 def _b64encode(value: bytes) -> str:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
@@ -223,6 +224,16 @@ Frame = (
     | ErrorFrame
 )
 
+
+@dataclass(frozen=True, slots=True)
+class ReceivedCommandFrame:
+    """Validated COMMAND frame envelope plus the exact nested Command JSON bytes."""
+
+    protocol_version: str
+    frame_id: str
+    command_bytes: bytes
+
+
 _FRAME_ADAPTER: TypeAdapter[Frame] = TypeAdapter(Frame)
 _FRAME_SCHEMAS = SchemaCatalog()
 
@@ -244,6 +255,86 @@ def parse_frame(payload: str | bytes) -> Frame:
     document = json.loads(payload, object_pairs_hook=_reject_duplicate_members)
     _FRAME_SCHEMAS.validate("websocket-frame.schema.json", document)
     return _FRAME_ADAPTER.validate_python(document)
+
+
+def parse_received_frame(payload: str | bytes) -> Frame | ReceivedCommandFrame:
+    """Parse an inbound frame without decoding away nested Command byte evidence."""
+
+    if isinstance(payload, bytes):
+        payload = payload.decode("utf-8", errors="strict")
+    members, spans = _root_members(payload)
+    if members.get("frameType") != "COMMAND":
+        return parse_frame(payload)
+
+    command_span = spans.get("command")
+    envelope = dict(members)
+    envelope["command"] = {}
+    validated = CommandFrame.model_validate(envelope)
+    if command_span is None:
+        raise ValueError("COMMAND frame has no command member")
+    start, end = command_span
+    try:
+        command_bytes = payload[start:end].encode("utf-8", errors="strict")
+    except UnicodeEncodeError as error:
+        raise ValueError("Command contains text outside strict UTF-8") from error
+    return ReceivedCommandFrame(
+        protocol_version=validated.protocol_version,
+        frame_id=validated.frame_id,
+        command_bytes=command_bytes,
+    )
+
+
+def _root_members(payload: str) -> tuple[dict[str, Any], dict[str, tuple[int, int]]]:
+    decoder = json.JSONDecoder()
+    length = len(payload)
+
+    def skip_whitespace(position: int) -> int:
+        while position < length and payload[position] in " \t\r\n":
+            position += 1
+        return position
+
+    position = skip_whitespace(0)
+    if position >= length or payload[position] != "{":
+        raise ValueError("frame must be one JSON object")
+    position = skip_whitespace(position + 1)
+    members: dict[str, Any] = {}
+    spans: dict[str, tuple[int, int]] = {}
+    if position < length and payload[position] == "}":
+        position = skip_whitespace(position + 1)
+        if position != length:
+            raise ValueError("frame has trailing JSON data")
+        return members, spans
+
+    while True:
+        try:
+            name, name_end = decoder.raw_decode(payload, position)
+        except json.JSONDecodeError as error:
+            raise ValueError("frame has an invalid JSON member name") from error
+        if not isinstance(name, str):
+            raise ValueError("frame JSON member names must be strings")
+        if name in members:
+            raise ValueError(f"duplicate JSON object member: {name}")
+        position = skip_whitespace(name_end)
+        if position >= length or payload[position] != ":":
+            raise ValueError("frame JSON member has no colon")
+        value_start = skip_whitespace(position + 1)
+        try:
+            value, value_end = decoder.raw_decode(payload, value_start)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"frame member {name!r} has invalid JSON") from error
+        members[name] = value
+        spans[name] = (value_start, value_end)
+        position = skip_whitespace(value_end)
+        if position >= length:
+            raise ValueError("frame JSON object is not closed")
+        if payload[position] == "}":
+            position = skip_whitespace(position + 1)
+            if position != length:
+                raise ValueError("frame has trailing JSON data")
+            return members, spans
+        if payload[position] != ",":
+            raise ValueError("frame JSON members are not comma-separated")
+        position = skip_whitespace(position + 1)
 
 
 def encode_frame(frame: Frame) -> str:

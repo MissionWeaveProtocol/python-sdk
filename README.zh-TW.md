@@ -125,7 +125,8 @@ Mission 狀態和有序重放。
 
 ## 執行 WebSocket Group gateway
 
-建立一次性的本機金鑰和由 Organization 簽名的 registry：
+建立一次性的本機金鑰、由 Organization 簽名的 Agent Card registry，以及完整的簽名金鑰
+Agent Registry snapshot：
 
 ```bash
 uv run python examples/create_dev_registry.py
@@ -137,6 +138,7 @@ export MISSIONWEAVEPROTOCOL_SESSION_SECRET='development-only-session-secret-32-b
 
 uv run missionweaveprotocol-server \
   --registry .missionweaveprotocol/dev-registry.json \
+  --key-registry .missionweaveprotocol/dev-key-registry.json \
   --database-url postgresql://missionweaveprotocol:missionweaveprotocol@127.0.0.1:55432/missionweaveprotocol \
   --organization-public-key "$MISSIONWEAVEPROTOCOL_ORGANIZATION_PUBLIC_KEY" \
   --allow-insecure

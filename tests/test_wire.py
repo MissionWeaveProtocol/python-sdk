@@ -20,10 +20,12 @@ from missionweaveprotocol.wire import (
     GroupCursor,
     HelloFrame,
     PingFrame,
+    ReceivedCommandFrame,
     SubscribeFrame,
     WelcomeFrame,
     encode_frame,
     parse_frame,
+    parse_received_frame,
 )
 
 NOW = datetime(2026, 7, 15, tzinfo=UTC)
@@ -183,3 +185,16 @@ def test_command_frame_round_trips_extension_data_without_promoting_core_fields(
     assert parsed.command["groupId"] == COMMAND["groupId"]
     assert parsed.command["payload"] == COMMAND["payload"]
     assert parsed.command["signature"] == COMMAND["signature"]
+
+
+def test_received_command_frame_preserves_exact_nested_json_bytes() -> None:
+    raw_command = '{\n  "payload": {"number": 1e400},\n  "protocolVersion": "0.1"\n}'
+    raw_frame = (
+        '{"protocolVersion":"0.1","frameId":"urn:missionweaveprotocol:frame:raw",'
+        '"frameType":"COMMAND","command":' + raw_command + "}"
+    )
+
+    parsed = parse_received_frame(raw_frame)
+
+    assert isinstance(parsed, ReceivedCommandFrame)
+    assert parsed.command_bytes == raw_command.encode()

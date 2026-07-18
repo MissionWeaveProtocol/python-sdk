@@ -34,6 +34,11 @@ def main() -> None:
     parser.add_argument(
         "--keys-output", type=Path, default=Path(".missionweaveprotocol/dev-keys.json")
     )
+    parser.add_argument(
+        "--key-registry-output",
+        type=Path,
+        default=Path(".missionweaveprotocol/dev-key-registry.json"),
+    )
     args = parser.parse_args()
 
     organization_private, organization_public = generate_keypair()
@@ -41,6 +46,7 @@ def main() -> None:
     authority_private, authority_public = generate_keypair()
     agent_id = "urn:missionweaveprotocol:agent:developer"
     agent_key_id = default_agent_key_id(agent_id)
+    issued_at = datetime.now(UTC)
     unsigned = AgentCard(
         agent_id=agent_id,
         version=1,
@@ -71,7 +77,7 @@ def main() -> None:
                 verified_evidence=("urn:missionweaveprotocol:evidence:developer-review",),
             ),
         ),
-        issued_at=datetime.now(UTC),
+        issued_at=issued_at,
         signature="pending",
     )
     card = unsigned.model_copy(
@@ -84,6 +90,7 @@ def main() -> None:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.keys_output.parent.mkdir(parents=True, exist_ok=True)
+    args.key_registry_output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(
             {"agentCards": [card.model_dump(mode="json", by_alias=True)]},
@@ -109,8 +116,53 @@ def main() -> None:
         )
         + "\n",
     )
+    valid_from = issued_at.isoformat().replace("+00:00", "Z")
+    args.key_registry_output.write_text(
+        json.dumps(
+            {
+                "organizationId": "urn:missionweaveprotocol:organization:local-development",
+                "bindings": [
+                    {
+                        "keyId": agent_key_id,
+                        "principal": {"type": "agent", "id": agent_id},
+                        "algorithm": "Ed25519",
+                        "publicKey": agent_public,
+                        "validFrom": valid_from,
+                        "validityHistory": [],
+                    },
+                    {
+                        "keyId": "urn:missionweaveprotocol:key:group-gateway",
+                        "principal": {
+                            "type": "service",
+                            "id": "urn:missionweaveprotocol:service:group-gateway",
+                        },
+                        "algorithm": "Ed25519",
+                        "publicKey": authority_public,
+                        "validFrom": valid_from,
+                        "validityHistory": [],
+                    },
+                    {
+                        "keyId": "urn:missionweaveprotocol:key:organization-registry",
+                        "principal": {
+                            "type": "service",
+                            "id": "urn:missionweaveprotocol:service:organization-registry",
+                        },
+                        "algorithm": "Ed25519",
+                        "publicKey": organization_public,
+                        "validFrom": valid_from,
+                        "validityHistory": [],
+                    },
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     print(args.output)
     print(args.keys_output)
+    print(args.key_registry_output)
 
 
 if __name__ == "__main__":

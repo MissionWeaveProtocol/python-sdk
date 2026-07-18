@@ -32,6 +32,7 @@ from .models import (
     RegisterAgentCardPayload,
     SignatureEnvelope,
 )
+from .signed_documents import AgentRegistryKeyResolver, KeyResolver
 from .store import SQLStore
 
 
@@ -163,6 +164,7 @@ def create_gateway_app(
     *,
     database_url: str,
     agent_cards: Sequence[AgentCard],
+    command_key_resolver: KeyResolver,
     session_secret: bytes | None = None,
     authority_key_id: str = "urn:missionweaveprotocol:key:group-gateway",
     authority_private_key: str | None = None,
@@ -190,6 +192,7 @@ def create_gateway_app(
     adapter = CoreGatewayAdapter(
         core,
         keys,
+        command_key_resolver,
         authority_key_id=authority_key_id,
         authority_private_key=resolved_authority_private_key,
     )
@@ -229,6 +232,17 @@ def _server_command(
             dir_okay=False,
             readable=True,
             help="Organization-controlled JSON Agent Registry.",
+        ),
+    ],
+    key_registry: Annotated[
+        Path,
+        typer.Option(
+            "--key-registry",
+            envvar="MISSIONWEAVEPROTOCOL_KEY_REGISTRY",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Complete Organization-controlled signing-key Agent Registry snapshot.",
         ),
     ],
     database_url: Annotated[
@@ -304,9 +318,17 @@ def _server_command(
         )
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="--registry") from error
+    try:
+        command_key_resolver = AgentRegistryKeyResolver(key_registry.read_bytes())
+    except OSError as error:
+        raise typer.BadParameter(
+            f"cannot read signing-key Agent Registry {key_registry}: {error}",
+            param_hint="--key-registry",
+        ) from error
     app = create_gateway_app(
         database_url=database_url,
         agent_cards=cards,
+        command_key_resolver=command_key_resolver,
         session_secret=_secret_bytes(session_secret),
         authority_key_id=authority_key_id,
         authority_private_key=authority_private_key,
