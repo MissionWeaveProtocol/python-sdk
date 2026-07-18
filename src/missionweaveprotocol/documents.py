@@ -10,23 +10,22 @@ the result against the normative JSON Schemas.
 
 from __future__ import annotations
 
+import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from cryptography.hazmat.primitives import serialization
 from jsonschema import ValidationError as JSONSchemaValidationError
 
 from .canonical import canonical_hash
 from .conformance import SchemaCatalog
 from .crypto import (
     PrivateKeyLike,
-    PublicKeyLike,
     encode_public_key,
     load_private_key,
-    sign_canonical,
-    verify_canonical,
 )
 from .models import (
     ActorType,
@@ -53,6 +52,11 @@ from .models import (
     WorkItem,
     WorkItemStatus,
 )
+from .signed_documents import (
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    SignedDocumentSigningError,
+)
 
 type ProtocolDocument = dict[str, Any]
 
@@ -72,6 +76,24 @@ class DocumentSigner:
     principal_id: str
     key_id: str
     private_key: PrivateKeyLike
+
+    @property
+    def algorithm(self) -> str:
+        return "Ed25519"
+
+    @property
+    def public_key_bytes(self) -> bytes:
+        return (
+            load_private_key(self.private_key)
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        )
+
+    def sign(self, message: bytes) -> bytes:
+        return load_private_key(self.private_key).sign(message)
 
     @property
     def public_key(self) -> str:
@@ -122,9 +144,11 @@ class ProtocolDocumentAdapter:
         config: ProtocolDocumentConfig,
         *,
         schemas: SchemaCatalog | None = None,
+        codec: SignedDocumentCodec | None = None,
     ) -> None:
         self._config = config
         self._schemas = schemas or SchemaCatalog()
+        self._codec = codec or SignedDocumentCodec()
         self._signers = {signer.principal_id: signer for signer in config.principal_signers}
 
     def agent_card(self, card: AgentCard) -> ProtocolDocument:
@@ -165,10 +189,9 @@ class ProtocolDocumentAdapter:
             "issuedAt": self._timestamp(card.issued_at),
         }
         return self._sign(
-            "agent-card.schema.json",
+            SignedDocumentKind.AGENT_CARD,
             document,
             self._config.registry_signer,
-            card.issued_at,
         )
 
     def membership(self, membership: Membership, mission: Mission) -> ProtocolDocument:
@@ -508,10 +531,9 @@ class ProtocolDocumentAdapter:
             "createdAt": self._timestamp(artifact.created_at),
         }
         return self._sign(
-            "artifact.schema.json",
+            SignedDocumentKind.ARTIFACT,
             document,
             self._signer_for(artifact.producing_agent_id),
-            artifact.created_at,
         )
 
     def evidence(
@@ -555,10 +577,9 @@ class ProtocolDocumentAdapter:
         if isinstance(model_version, str):
             document["modelVersion"] = model_version
         return self._sign(
-            "evidence.schema.json",
+            SignedDocumentKind.EVIDENCE,
             document,
             self._signer_for(generated_by.id),
-            created_at,
         )
 
     def approval(
@@ -593,10 +614,9 @@ class ProtocolDocumentAdapter:
                 "occurredAt": self._timestamp(approval.approved_at),
             }
             return self._sign(
-                "approval.schema.json",
+                SignedDocumentKind.APPROVAL,
                 execution_document,
                 self._signer_for(approval.approver.id),
-                approval.approved_at,
             )
         if not _SEMVER.fullmatch(approval.acceptance_policy_version):
             raise DocumentMappingError(
@@ -618,23 +638,10 @@ class ProtocolDocumentAdapter:
             "occurredAt": self._timestamp(approval.approved_at),
         }
         return self._sign(
-            "approval.schema.json",
+            SignedDocumentKind.APPROVAL,
             document,
             self._signer_for(approval.approver.id),
-            approval.approved_at,
         )
-
-    @staticmethod
-    def verify_signature(document: Mapping[str, Any], public_key: PublicKeyLike) -> bool:
-        signature = document.get("signature")
-        if not isinstance(signature, Mapping):
-            return False
-        value = signature.get("value")
-        if not isinstance(value, str):
-            return False
-        payload = dict(document)
-        del payload["signature"]
-        return verify_canonical(payload, value, public_key)
 
     def _capability(self, capability: Capability) -> ProtocolDocument:
         if capability.input_schema is None or capability.output_schema is None:
@@ -788,19 +795,25 @@ class ProtocolDocumentAdapter:
 
     def _sign(
         self,
-        schema_name: str,
+        kind: SignedDocumentKind,
         document: ProtocolDocument,
         signer: DocumentSigner,
-        created_at: datetime,
     ) -> ProtocolDocument:
-        signed = dict(document)
-        signed["signature"] = {
-            "algorithm": "Ed25519",
-            "keyId": self._id(signer.key_id, "key"),
-            "createdAt": self._timestamp(created_at),
-            "value": sign_canonical(document, signer.private_key),
-        }
-        return self._validated(schema_name, signed)
+        selected_signer = DocumentSigner(
+            principal_id=signer.principal_id,
+            key_id=self._id(signer.key_id, "key"),
+            private_key=signer.private_key,
+        )
+        try:
+            signed = self._codec.sign(kind, document, selected_signer)
+        except SignedDocumentSigningError as error:
+            raise DocumentMappingError(
+                f"{kind.value} document cannot be signed: {error}"
+            ) from error
+        value = json.loads(signed.canonical_document_bytes)
+        if not isinstance(value, dict):
+            raise DocumentMappingError(f"{kind.value} signed document is not an object")
+        return value
 
     def _validated(
         self,

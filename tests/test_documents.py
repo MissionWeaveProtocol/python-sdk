@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -7,6 +8,14 @@ from typing import Any
 
 import pytest
 
+from missionweaveprotocol import (
+    AgentRegistryKeyResolver,
+    SignedDocumentCodec,
+    SignedDocumentKind,
+    SignedDocumentVerificationError,
+    VerificationStage,
+)
+from missionweaveprotocol.canonical import canonical_hash
 from missionweaveprotocol.conformance import SchemaCatalog
 from missionweaveprotocol.crypto import generate_keypair
 from missionweaveprotocol.documents import (
@@ -64,6 +73,7 @@ class ProjectionFixture:
     artifact: Artifact
     approval: Approval
     execution_approval: ExecutionApproval
+    key_resolver: AgentRegistryKeyResolver
 
 
 @pytest.fixture
@@ -94,6 +104,49 @@ def projections() -> ProjectionFixture:
             registry_signer=registry_signer,
             principal_signers=(agent_signer, human_signer),
         )
+    )
+    key_resolver = AgentRegistryKeyResolver(
+        json.dumps(
+            {
+                "organizationId": "urn:missionweaveprotocol:organization:acme",
+                "bindings": [
+                    {
+                        "keyId": registry_signer.key_id,
+                        "principal": {
+                            "type": "service",
+                            "id": "urn:missionweaveprotocol:service:organization-registry",
+                        },
+                        "algorithm": "Ed25519",
+                        "publicKey": registry_signer.public_key,
+                        "validFrom": "2026-01-01T00:00:00Z",
+                        "validityHistory": [],
+                    },
+                    {
+                        "keyId": agent_signer.key_id,
+                        "principal": {
+                            "type": "agent",
+                            "id": (
+                                "urn:missionweaveprotocol:agent:"
+                                + canonical_hash("developer").removeprefix("sha256:")
+                            ),
+                        },
+                        "algorithm": "Ed25519",
+                        "publicKey": agent_signer.public_key,
+                        "validFrom": "2026-01-01T00:00:00Z",
+                        "validityHistory": [],
+                    },
+                    {
+                        "keyId": human_signer.key_id,
+                        "principal": {"type": "human", "id": "human:owner"},
+                        "algorithm": "Ed25519",
+                        "publicKey": human_signer.public_key,
+                        "validFrom": "2026-01-01T00:00:00Z",
+                        "validityHistory": [],
+                    },
+                ],
+            },
+            separators=(",", ":"),
+        ).encode()
     )
     capability = Capability(
         id="software.python",
@@ -301,6 +354,7 @@ def projections() -> ProjectionFixture:
         artifact=artifact,
         approval=approval,
         execution_approval=execution_approval,
+        key_resolver=key_resolver,
     )
 
 
@@ -395,18 +449,18 @@ def test_work_item_projection_preserves_the_authoritative_state_name(
 
 
 @pytest.mark.parametrize(
-    ("name", "public_key", "field", "replacement"),
+    ("name", "kind", "field", "replacement"),
     (
-        ("agent", "registry", "displayName", "Tampered Agent"),
-        ("artifact", "agent", "sizeBytes", 9999),
-        ("evidence", "agent", "method", "Tampered evidence"),
-        ("approval", "human", "comments", "Tampered approval"),
+        ("agent", SignedDocumentKind.AGENT_CARD, "displayName", "Tampered Agent"),
+        ("artifact", SignedDocumentKind.ARTIFACT, "sizeBytes", 9999),
+        ("evidence", SignedDocumentKind.EVIDENCE, "method", "Tampered evidence"),
+        ("approval", SignedDocumentKind.APPROVAL, "comments", "Tampered approval"),
     ),
 )
 def test_schema_required_signatures_verify_and_tampering_fails(
     projections: ProjectionFixture,
     name: str,
-    public_key: str,
+    kind: SignedDocumentKind,
     field: str,
     replacement: object,
 ) -> None:
@@ -428,18 +482,25 @@ def test_schema_required_signatures_verify_and_tampering_fails(
             projections.mission,
         ),
     }
-    keys = {
-        "registry": projections.registry_signer.public_key,
-        "agent": projections.agent_signer.public_key,
-        "human": projections.human_signer.public_key,
-    }
     document = documents[name]
 
-    assert projections.adapter.verify_signature(document, keys[public_key])
+    codec = SignedDocumentCodec()
+    verified = codec.verify(
+        kind,
+        json.dumps(document, separators=(",", ":")).encode(),
+        projections.key_resolver,
+    )
+    assert verified.document == document
 
     tampered: dict[str, Any] = deepcopy(document)
     tampered[field] = replacement
-    assert not projections.adapter.verify_signature(tampered, keys[public_key])
+    with pytest.raises(SignedDocumentVerificationError) as captured:
+        codec.verify(
+            kind,
+            json.dumps(tampered, separators=(",", ":")).encode(),
+            projections.key_resolver,
+        )
+    assert captured.value.protected_error.stage is VerificationStage.SIGNATURE
 
 
 def test_execution_approval_maps_to_normative_work_execution_decision(
@@ -454,7 +515,12 @@ def test_execution_approval_maps_to_normative_work_execution_decision(
     assert document["kind"] == "work_execution"
     assert document["workItemId"].startswith("urn:missionweaveprotocol:work-item:")
     assert "operation:production.deploy" in document["conditions"]
-    assert projections.adapter.verify_signature(document, projections.human_signer.public_key)
+    verified = SignedDocumentCodec().verify(
+        SignedDocumentKind.APPROVAL,
+        json.dumps(document, separators=(",", ":")).encode(),
+        projections.key_resolver,
+    )
+    assert verified.document == document
 
 
 def test_adapter_rejects_projection_that_would_require_invented_capability_metadata(

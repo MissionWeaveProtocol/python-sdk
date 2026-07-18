@@ -246,6 +246,26 @@ class KeyResolver(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class AgentRegistryKeyResolver:
+    """Resolve keys from one trusted, complete Organization-controlled Agent Registry snapshot."""
+
+    registry_bytes: bytes
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.registry_bytes, bytes):
+            raise TypeError("registry_bytes must be bytes")
+        object.__setattr__(self, "registry_bytes", bytes(self.registry_bytes))
+
+    def resolve(self, request: KeyResolutionRequest) -> KeyRegistrySnapshot:
+        if not isinstance(request, KeyResolutionRequest):
+            raise TypeError("request must be a KeyResolutionRequest")
+        return KeyRegistrySnapshot(
+            completeness=KeyRegistryCompleteness.ORGANIZATION_WIDE,
+            registry_bytes=self.registry_bytes,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class _Profile:
     schema_name: str
     protected_time_pointer: str
