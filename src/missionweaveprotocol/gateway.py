@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import uuid4
 
-from cryptography.hazmat.primitives import serialization
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from jsonschema import ValidationError as JSONSchemaValidationError
 from pydantic import JsonValue
@@ -118,6 +117,14 @@ class UnknownCriticalExtension(ValueError):
             self.details["supportedVersion"] = supported_version
 
 
+class CommandAdmissionError(AuthenticationError):
+    """A protected Command-admission failure with a non-oracular wire representation."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
 class GatewayCore(Protocol):
     """Owned port exposing only the core behavior required by the transport Adapter."""
 
@@ -128,7 +135,7 @@ class GatewayCore(Protocol):
     async def perform(
         self,
         *,
-        session: SessionGrant,
+        verify_session: Callable[[], SessionGrant],
         command_bytes: bytes,
     ) -> dict[str, JsonValue]: ...
 
@@ -223,10 +230,14 @@ class CoreGatewayAdapter:
     async def perform(
         self,
         *,
-        session: SessionGrant,
+        verify_session: Callable[[], SessionGrant],
         command_bytes: bytes,
     ) -> dict[str, JsonValue]:
         verified = self._ingress.verify(command_bytes, self._command_key_resolver)
+        try:
+            session = verify_session()
+        except AuthenticationError as error:
+            raise CommandAdmissionError(str(error)) from error
         try:
             parsed = self._ingress.project_verified(verified)
         except (KeyError, ValueError, PydanticValidationError) as error:
@@ -240,7 +251,7 @@ class CoreGatewayAdapter:
             ) from error
         accepted_at = self._now()
         self._verify_command_session(verified, parsed, session, accepted_at)
-        self._verify_current_command_key(verified, session, accepted_at)
+        self._verify_command_key_admission(verified, session, accepted_at)
         await self._verify_command_membership(parsed, session.agent_id)
         self._verify_command_extensions(parsed)
         event = await self._core.perform(parsed)
@@ -278,40 +289,47 @@ class CoreGatewayAdapter:
         accepted_at: datetime,
     ) -> None:
         if command.actor.type is not ActorType.AGENT or command.actor.id != session.agent_id:
-            raise AuthenticationError("Command actor does not match the authenticated Agent")
+            raise CommandAdmissionError("Command actor does not match the authenticated Agent")
         if command.session_epoch != session.session_epoch:
-            raise AuthenticationError("Command epoch does not match the authenticated session")
+            raise CommandAdmissionError("Command epoch does not match the authenticated session")
         if command.protocol_version != session.protocol_version:
-            raise AuthenticationError(
+            raise CommandAdmissionError(
                 "Command protocol version does not match the authenticated session"
             )
         if verified.signature.key_id != session.key_id:
-            raise AuthenticationError("Command key ID does not match the authenticated session")
+            raise CommandAdmissionError("Command key ID does not match the authenticated session")
         protected = verified.protected_time.instant
         if protected < _datetime_instant(session.issued_at) or protected >= _datetime_instant(
             session.expires_at
         ):
-            raise AuthenticationError("Command timestamp is outside the authenticated session")
+            raise CommandAdmissionError("Command timestamp is outside the authenticated session")
         if protected > _datetime_instant(accepted_at):
-            raise AuthenticationError("Command timestamp is in the future")
+            raise CommandAdmissionError("Command timestamp is in the future")
 
-    def _verify_current_command_key(
+    def _verify_command_key_admission(
         self,
         verified: VerifiedSignedDocument,
         session: SessionGrant,
         accepted_at: datetime,
     ) -> None:
-        current_key = self._command_keys.resolve(
-            session.agent_id,
-            verified.signature.key_id,
-            at=accepted_at,
-        )
-        current_bytes = current_key.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        )
-        if current_bytes != verified.resolved_key.public_key_bytes:
-            raise AuthenticationError(
+        accepted = _datetime_instant(accepted_at)
+        validity = verified.resolved_key.validity
+        if accepted < validity.valid_from:
+            raise CommandAdmissionError("Command signing key is not yet valid at admission")
+        if validity.valid_until is not None and accepted >= validity.valid_until:
+            raise CommandAdmissionError("Command signing key is expired at admission")
+        if validity.revoked_at is not None and accepted >= validity.revoked_at:
+            raise CommandAdmissionError("Command signing key is revoked at admission")
+        try:
+            matches_session_key = self._command_keys.matches_registered_public_key(
+                session.agent_id,
+                verified.signature.key_id,
+                verified.resolved_key.public_key_bytes,
+            )
+        except AuthenticationError as error:
+            raise CommandAdmissionError(str(error)) from error
+        if not matches_session_key:
+            raise CommandAdmissionError(
                 "Command signing key does not match the authenticated session"
             )
 
@@ -584,9 +602,8 @@ class GroupGateway:
             return
 
         if isinstance(frame, ReceivedCommandFrame):
-            grant = self._sessions.verify_session(connection.grant.token)
             event = await self._core.perform(
-                session=grant,
+                verify_session=lambda: self._sessions.verify_session(connection.grant.token),
                 command_bytes=frame.command_bytes,
             )
             await self._fanout(event)
@@ -655,7 +672,9 @@ class GroupGateway:
         if isinstance(error, SignedDocumentVerificationError):
             message = error.wire_error.message
             retryable = error.wire_error.retryable
-        details = getattr(error, "details", {})
+        elif isinstance(error, CommandAdmissionError):
+            message = "signed document rejected"
+        details = {} if isinstance(error, CommandAdmissionError) else getattr(error, "details", {})
         normalized_details = cast(
             dict[str, JsonValue],
             json.loads(canonical_json(details)) if isinstance(details, dict) else {},
@@ -687,6 +706,8 @@ class GroupGateway:
 def _wire_error_code(error: Exception) -> WireErrorCode:
     if isinstance(error, SignedDocumentVerificationError):
         return error.wire_error.code
+    if isinstance(error, CommandAdmissionError):
+        return WireErrorCode.AUTH_INVALID_SIGNATURE
     if isinstance(error, UnknownCriticalExtension):
         return WireErrorCode.UNKNOWN_CRITICAL_EXTENSION
     if isinstance(error, GatewaySchemaError | PydanticValidationError | JSONSchemaValidationError):
@@ -722,7 +743,7 @@ def _wire_error_code(error: Exception) -> WireErrorCode:
 
 def _datetime_instant(value: datetime) -> ProtectedInstant:
     if value.tzinfo is None or value.utcoffset() is None:
-        raise AuthenticationError("session timestamps must include a timezone")
+        raise CommandAdmissionError("session timestamps must include a timezone")
     utc = value.astimezone(UTC)
     epoch = datetime(1970, 1, 1, tzinfo=UTC)
     delta = utc - epoch

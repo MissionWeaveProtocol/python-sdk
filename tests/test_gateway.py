@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -22,7 +22,6 @@ from missionweaveprotocol import (
 from missionweaveprotocol.auth import (
     AgentIdentity,
     AgentKeyRegistry,
-    AuthenticationError,
     SessionAuthority,
     SessionGrant,
     default_agent_key_id,
@@ -31,6 +30,7 @@ from missionweaveprotocol.canonical import canonical_bytes
 from missionweaveprotocol.core import Core, StaleSessionEpoch
 from missionweaveprotocol.crypto import generate_keypair
 from missionweaveprotocol.gateway import (
+    CommandAdmissionError,
     CoreGatewayAdapter,
     GroupGateway,
     UnknownCriticalExtension,
@@ -90,6 +90,7 @@ SESSION_SECRET = b"x" * 32
 def _command_key_resolver(
     *registrations: tuple[AgentIdentity, str],
     service_registrations: tuple[tuple[str, str, str], ...] = (),
+    validity_history: dict[str, list[dict[str, Any]]] | None = None,
 ) -> AgentRegistryKeyResolver:
     bindings = [
         {
@@ -98,7 +99,7 @@ def _command_key_resolver(
             "algorithm": "Ed25519",
             "publicKey": identity.public_key,
             "validFrom": "2000-01-01T00:00:00Z",
-            "validityHistory": [],
+            "validityHistory": (validity_history or {}).get(key_id, []),
         }
         for identity, key_id in registrations
     ]
@@ -194,9 +195,10 @@ class FakeCore:
     async def perform(
         self,
         *,
-        session: SessionGrant,
+        verify_session: Callable[[], SessionGrant],
         command_bytes: bytes,
     ) -> dict[str, Any]:
+        session = verify_session()
         command = json.loads(command_bytes)
         assert isinstance(command, dict)
         group_id = str(command["groupId"])
@@ -739,13 +741,14 @@ def test_command_key_id_must_match_the_authenticated_key() -> None:
         signature_key_id=alternate_key_id,
     )
 
-    with pytest.raises(AuthenticationError, match="key ID"):
+    with pytest.raises(CommandAdmissionError, match="key ID") as rejected:
         asyncio.run(
             adapter.perform(
-                session=_session(identity, session_epoch=1),
+                verify_session=lambda: _session(identity, session_epoch=1),
                 command_bytes=canonical_bytes(command),
             )
         )
+    assert rejected.value.reason == "Command key ID does not match the authenticated session"
 
 
 def test_command_timestamp_must_be_inside_the_authenticated_session() -> None:
@@ -764,10 +767,10 @@ def test_command_timestamp_must_be_inside_the_authenticated_session() -> None:
         issued_at="2000-01-01T00:00:00Z",
     )
 
-    with pytest.raises(AuthenticationError, match="outside"):
+    with pytest.raises(CommandAdmissionError, match="outside"):
         asyncio.run(
             adapter.perform(
-                session=_session(identity, session_epoch=1),
+                verify_session=lambda: _session(identity, session_epoch=1),
                 command_bytes=canonical_bytes(command),
             )
         )
@@ -892,7 +895,7 @@ async def test_out_of_binary64_command_number_reaches_codec_canonicalization() -
 
     with pytest.raises(SignedDocumentVerificationError) as captured:
         await adapter.perform(
-            session=_session(identity, session_epoch=1),
+            verify_session=lambda: _session(identity, session_epoch=1),
             command_bytes=raw.encode(),
         )
 
@@ -910,10 +913,22 @@ async def test_key_revoked_before_admission_is_rejected_after_codec_verification
         key_id=KEY_ID,
         valid_from=now - timedelta(hours=1),
     )
+    revoked_at = now - timedelta(seconds=1)
     adapter = CoreGatewayAdapter(
         Core(InMemoryStore()),
         keys,
-        _command_key_resolver((identity, KEY_ID)),
+        _command_key_resolver(
+            (identity, KEY_ID),
+            validity_history={
+                KEY_ID: [
+                    {
+                        "sequence": 1,
+                        "recordedAt": now.isoformat().replace("+00:00", "Z"),
+                        "revokedAt": revoked_at.isoformat().replace("+00:00", "Z"),
+                    }
+                ]
+            },
+        ),
         clock=lambda: now,
     )
     command = _signed_command(
@@ -922,11 +937,9 @@ async def test_key_revoked_before_admission_is_rejected_after_codec_verification
         session_epoch=1,
         issued_at=(now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
     )
-    keys.revoke(identity.agent_id, KEY_ID, revoked_at=now - timedelta(seconds=1))
-
-    with pytest.raises(AuthenticationError, match="revoked"):
+    with pytest.raises(CommandAdmissionError, match="revoked"):
         await adapter.perform(
-            session=_session(identity, session_epoch=1, now=now),
+            verify_session=lambda: _session(identity, session_epoch=1, now=now),
             command_bytes=canonical_bytes(command),
         )
 
@@ -997,7 +1010,9 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
             )
             fenced = parse_frame(original_socket.receive_text())
             assert isinstance(fenced, ErrorFrame)
-            assert fenced.error.code is ErrorCode.AUTH_STALE_SESSION
+            assert fenced.error.code is ErrorCode.AUTH_INVALID_SIGNATURE
+            assert fenced.error.message == "signed document rejected"
+            assert fenced.error.details is None
 
     stale_command = _signed_command(
         identity,
@@ -1007,7 +1022,10 @@ def test_real_core_accepts_signed_command_and_fences_replaced_session() -> None:
     with pytest.raises(StaleSessionEpoch):
         asyncio.run(
             adapter.perform(
-                session=_session(identity, session_epoch=original.session_epoch),
+                verify_session=lambda: _session(
+                    identity,
+                    session_epoch=original.session_epoch,
+                ),
                 command_bytes=canonical_bytes(stale_command),
             )
         )
@@ -1540,7 +1558,7 @@ def test_websocket_disconnect_reconnect_replays_only_after_durable_ack() -> None
 
 
 @pytest.mark.asyncio
-async def test_adapter_schema_validates_command_before_translation() -> None:
+async def test_adapter_completes_codec_verification_before_session_verification() -> None:
     identity = AgentIdentity.generate(AGENT_ID)
     keys = AgentKeyRegistry()
     keys.register(identity.agent_id, identity.public_key, key_id=KEY_ID)
@@ -1550,12 +1568,20 @@ async def test_adapter_schema_validates_command_before_translation() -> None:
         _command_key_resolver((identity, KEY_ID)),
     )
 
+    def unexpected_session_verification() -> SessionGrant:
+        raise AssertionError("session verification ran before the codec rejected the Command")
+
+    command = _signed_command(identity, action_number=89, session_epoch=1)
+    payload = command["payload"]
+    assert isinstance(payload, dict)
+    payload["content"] = "tampered after signing"
+
     with pytest.raises(SignedDocumentVerificationError) as captured:
         await adapter.perform(
-            session=_session(identity, session_epoch=1),
-            command_bytes=b'{"protocolVersion":"0.1"}',
+            verify_session=unexpected_session_verification,
+            command_bytes=canonical_bytes(command),
         )
-    assert captured.value.protected_error.stage is VerificationStage.SCHEMA
+    assert captured.value.protected_error.stage is VerificationStage.SIGNATURE
 
 
 @pytest.mark.asyncio
@@ -1592,7 +1618,7 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
         extensions=extensions,
     )
     event = await adapter.perform(
-        session=_session(identity, session_epoch=1),
+        verify_session=lambda: _session(identity, session_epoch=1),
         command_bytes=canonical_bytes(command),
     )
 
@@ -1609,7 +1635,7 @@ async def test_adapter_preserves_unknown_noncritical_extension_without_core_over
     assert event["extensions"] == extensions
 
     duplicate = await adapter.perform(
-        session=_session(identity, session_epoch=1),
+        verify_session=lambda: _session(identity, session_epoch=1),
         command_bytes=canonical_bytes(command),
     )
     sequence = event["sequence"]
@@ -1705,7 +1731,7 @@ async def test_critical_extension_requires_exact_configured_profile_version() ->
         }
     }
     accepted = await adapter.perform(
-        session=_session(identity, session_epoch=1),
+        verify_session=lambda: _session(identity, session_epoch=1),
         command_bytes=canonical_bytes(
             _signed_command_with_extensions(
                 identity,
@@ -1720,7 +1746,7 @@ async def test_critical_extension_requires_exact_configured_profile_version() ->
 
     with pytest.raises(UnknownCriticalExtension) as caught:
         await adapter.perform(
-            session=_session(identity, session_epoch=1),
+            verify_session=lambda: _session(identity, session_epoch=1),
             command_bytes=canonical_bytes(
                 _signed_command_with_extensions(
                     identity,
