@@ -25,6 +25,7 @@ from .models import (
     ExecutionApproval,
     GrantExecutionApprovalPayload,
     Group,
+    Membership,
     Mission,
     PostMessagePayload,
     Principal,
@@ -34,6 +35,7 @@ from .models import (
     ReplaceCoordinatorPayload,
     RequestMissionChangesPayload,
     ResourceBudget,
+    SignatureEnvelope,
     WorkItem,
 )
 
@@ -65,14 +67,21 @@ class HumanIdentity:
         return Principal.human(self.human_id)
 
     def sign(self, command: Command) -> Command:
+        value = sign_canonical(command.signing_payload(), self.private_key)
         return command.model_copy(
-            update={"signature": sign_canonical(command.signing_payload(), self.private_key)}
+            update={
+                "signature": SignatureEnvelope(
+                    key_id=self.key_id,
+                    created_at=command.issued_at,
+                    value=value,
+                )
+            }
         )
 
     def verify(self, command: Command) -> bool:
         signature = command.signature
-        return isinstance(signature, str) and verify_canonical(
-            command.signing_payload(), signature, self.public_key
+        return signature is not None and verify_canonical(
+            command.signing_payload(), signature.value, self.public_key
         )
 
 
@@ -314,11 +323,33 @@ class HumanControl:
         group_id: str,
         expected_revision: int | None = None,
     ) -> ControlReceipt:
+        action_id = self._action_id_factory()
+        membership_epoch: int | None = None
+        if kind not in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}:
+            membership = await self._core.query(
+                Query(
+                    kind=QueryKind.MEMBERSHIP,
+                    entity_id=self.identity.human_id,
+                    group_id=group_id,
+                    actor_type=self.identity.principal.type,
+                )
+            )
+            if not isinstance(membership, Membership):
+                raise NotFound(
+                    "human control identity lacks a Group Membership",
+                    group_id=group_id,
+                    human_id=self.identity.human_id,
+                )
+            membership_epoch = membership.epoch
         unsigned = Command(
-            action_id=self._action_id_factory(),
+            action_id=action_id,
             kind=kind,
             actor=self.identity.principal,
             group_id=group_id,
+            membership_epoch=membership_epoch,
+            correlation_id=action_id,
+            conversation_id=getattr(payload, "conversation_id", None),
+            work_item_id=getattr(payload, "work_item_id", None),
             expected_revision=expected_revision,
             issued_at=self._now(),
             payload=payload.model_dump(mode="json", by_alias=True),

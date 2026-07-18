@@ -177,7 +177,7 @@ def test_reversible_progress_is_bound_signed_and_queued_canonically(tmp_path) ->
 
     assert signed_message.signature is not None
     assert verify_canonical(
-        signed_message.signing_payload(), signed_message.signature, identity.public_key
+        signed_message.signing_payload(), signed_message.signature.value, identity.public_key
     )
     binding = signed_message.extensions[OFFLINE_EXECUTION_EXTENSION].data
     assert isinstance(binding, dict)
@@ -191,8 +191,11 @@ def test_reversible_progress_is_bound_signed_and_queued_canonically(tmp_path) ->
     checkpoint_binding = signed_checkpoint.extensions[OFFLINE_EXECUTION_EXTENSION].data
     assert isinstance(checkpoint_binding, dict)
     assert checkpoint_binding["executionLeaseId"] == EXECUTION_LEASE_ID
+    assert signed_checkpoint.signature is not None
     assert verify_canonical(
-        signed_checkpoint.signing_payload(), signed_checkpoint.signature, identity.public_key
+        signed_checkpoint.signing_payload(),
+        signed_checkpoint.signature.value,
+        identity.public_key,
     )
     expected_actions = [
         signed_message.model_dump(mode="json", by_alias=True),

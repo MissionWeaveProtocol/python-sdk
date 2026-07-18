@@ -71,7 +71,7 @@ uv run missionweaveprotocol-conformance --root .
 ```
 
 適合性テストコマンドは format check を行い、組み込みの 21 個の Draft 2020-12 schema に
-対して、組み込みの 43 個すべての vector を検証します。妥当性が期待値と一致しない場合は、
+対して、組み込みの 52 個すべての vector を検証します。妥当性が期待値と一致しない場合は、
 非ゼロで終了します。別のプロトコル checkout または release bundle も検証できます。
 
 ```bash

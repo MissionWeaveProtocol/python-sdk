@@ -6,11 +6,13 @@ from typing import Any, cast
 
 import pytest
 
+from missionweaveprotocol.auth import default_agent_key_id
 from missionweaveprotocol.control import HumanControl, HumanIdentity
 from missionweaveprotocol.core import Core
 from missionweaveprotocol.crypto import generate_keypair, sign_canonical
 from missionweaveprotocol.models import (
     AcceptWorkOfferPayload,
+    ActorType,
     AddMembershipPayload,
     AgentCard,
     Artifact,
@@ -20,6 +22,7 @@ from missionweaveprotocol.models import (
     CommandKind,
     CreateWorkItemPayload,
     Evidence,
+    Membership,
     Mission,
     MissionStatus,
     OfferWorkItemPayload,
@@ -31,6 +34,7 @@ from missionweaveprotocol.models import (
     RegisterAgentCardPayload,
     Role,
     SelectionBasis,
+    SignatureEnvelope,
     StartWorkItemPayload,
     SubmitMissionPayload,
     SubmitWorkItemPayload,
@@ -59,17 +63,40 @@ class AgentCommands:
         group_id: str | None = None,
         coordinator_epoch: int | None = None,
     ) -> Command:
+        action_id = f"test-action:{next(self._ids)}"
         return Command(
-            action_id=f"test-action:{next(self._ids)}",
+            action_id=action_id,
             kind=kind,
             actor=actor,
             group_id=group_id,
             session_epoch=self.epochs.get(actor.id),
             coordinator_epoch=coordinator_epoch,
+            correlation_id=action_id,
+            conversation_id=getattr(payload, "conversation_id", None),
+            work_item_id=getattr(payload, "work_item_id", None),
             issued_at=NOW,
             payload=payload,
-            signature="test-agent-signature",
+            signature=SignatureEnvelope(
+                key_id=default_agent_key_id(actor.id),
+                created_at=NOW,
+                value="test-agent-signature",
+            ),
         )
+
+    async def perform(self, command: Command) -> Any:
+        if command.group_id is not None and command.actor.type is not ActorType.SYSTEM:
+            membership = await self.core.query(
+                Query(
+                    kind=QueryKind.MEMBERSHIP,
+                    entity_id=command.actor.id,
+                    group_id=command.group_id,
+                    actor_type=command.actor.type,
+                )
+            )
+            if not isinstance(membership, Membership):
+                raise AssertionError("test Agent command lacks an authoritative Membership")
+            command = command.model_copy(update={"membership_epoch": membership.epoch})
+        return await self.core.perform(command)
 
     async def register(self, agent_id: str, *capabilities: str) -> None:
         private_key, public_key = generate_keypair()
@@ -84,14 +111,14 @@ class AgentCommands:
             issued_at=NOW,
             signature="organization-signature",
         )
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.REGISTER_AGENT_CARD,
                 Principal.system(),
                 RegisterAgentCardPayload(card=card),
             )
         )
-        opened = await self.core.perform(
+        opened = await self.perform(
             self.command(
                 CommandKind.OPEN_AGENT_SESSION,
                 Principal.system(),
@@ -133,7 +160,7 @@ async def control_setup() -> tuple[Core, HumanControl, AgentCommands]:
 async def test_human_interface_can_create_inspect_direct_replace_and_cancel(
     control_setup: tuple[Core, HumanControl, AgentCommands],
 ) -> None:
-    core, control, _ = control_setup
+    core, control, agents = control_setup
     created = await control.create(
         mission_id="mission:control",
         group_id="group:control",
@@ -144,6 +171,22 @@ async def test_human_interface_can_create_inspect_direct_replace_and_cancel(
         deadline=NOW + timedelta(hours=1),
     )
     directed = await control.direct("mission:control", "Prioritize deterministic evidence.")
+    await agents.perform(
+        agents.command(
+            CommandKind.ADD_MEMBERSHIP,
+            Principal.agent("agent:coordinator-a"),
+            AddMembershipPayload(
+                principal=control.identity.principal,
+                roles=(Role.MISSION_OWNER,),
+            ),
+            group_id="group:control",
+            coordinator_epoch=1,
+        )
+    )
+    redirected = await control.direct(
+        "mission:control",
+        "Use the current human Membership epoch after a role refresh.",
+    )
     replaced = await control.replace_coordinator(
         "mission:control", "agent:coordinator-b", lease_seconds=900
     )
@@ -153,6 +196,9 @@ async def test_human_interface_can_create_inspect_direct_replace_and_cancel(
 
     assert control.identity.verify(created.command)
     assert accepted == created.command
+    assert created.command.membership_epoch is None
+    assert directed.command.membership_epoch == 1
+    assert redirected.command.membership_epoch == 2
     assert directed.event.group_id == "group:control"
     assert inspection.mission.coordinator_id == "agent:coordinator-b"
     assert inspection.mission.coordinator_epoch == 2
@@ -181,7 +227,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
     )
     coordinator = Principal.agent("agent:coordinator-a")
     worker = Principal.agent("agent:worker")
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.ADD_MEMBERSHIP,
             coordinator,
@@ -197,7 +243,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
         deadline=NOW + timedelta(hours=1),
         required_capabilities=(CapabilityRequirement(id="software.python"),),
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.CREATE_WORK_ITEM,
             coordinator,
@@ -206,7 +252,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             coordinator_epoch=1,
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.OFFER_WORK_ITEM,
             coordinator,
@@ -222,7 +268,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             coordinator_epoch=1,
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.ACCEPT_WORK_OFFER,
             worker,
@@ -230,7 +276,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             group_id="group:approval",
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.START_WORK_ITEM,
             worker,
@@ -260,7 +306,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             signature="pending",
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.PUBLISH_ARTIFACT,
             worker,
@@ -272,7 +318,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             group_id="group:approval",
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.SUBMIT_WORK_ITEM,
             worker,
@@ -286,7 +332,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             group_id="group:approval",
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.VERIFY_WORK_ITEM,
             coordinator,
@@ -298,7 +344,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
             coordinator_epoch=1,
         )
     )
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.SUBMIT_MISSION,
             coordinator,
@@ -309,7 +355,7 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
     )
 
     await control.request_changes("mission:approval", "Add a clearer release note.")
-    await core.perform(
+    await agents.perform(
         agents.command(
             CommandKind.SUBMIT_MISSION,
             coordinator,
@@ -326,7 +372,8 @@ async def test_human_change_request_and_approval_are_signed_and_durable(
     stored_command = await control.accepted_command(receipt.event.id)
 
     assert control.identity.verify(stored_command)
-    assert approval.signature == stored_command.signature
+    assert stored_command.signature is not None
+    assert approval.signature == stored_command.signature.value
     assert approval.mission_revision > 1
     approved = await core.query(Query(kind=QueryKind.MISSION, entity_id="mission:approval"))
     assert isinstance(approved, Mission)

@@ -7,9 +7,6 @@
   "required": [
     "protocolVersion",
     "eventId",
-    "groupId",
-    "sequence",
-    "aggregateRevision",
     "kind",
     "actor",
     "cause",
@@ -127,5 +124,48 @@
     "signature": {
       "$ref": "common.schema.json#/$defs/signature"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "ext.missionweaveprotocol.registry.agent_card_registered",
+              "ext.missionweaveprotocol.identity.session_opened"
+            ]
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "service"
+              }
+            },
+            "required": ["type"]
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": ["groupId"]
+            },
+            {
+              "required": ["sequence"]
+            },
+            {
+              "required": ["aggregateRevision"]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": ["groupId", "sequence", "aggregateRevision"]
+      }
+    }
+  ]
 }

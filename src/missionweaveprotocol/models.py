@@ -791,12 +791,41 @@ class Command(ProtocolModel):
     session_epoch: Annotated[int, Field(gt=0)] | None = None
     membership_epoch: Annotated[int, Field(gt=0)] | None = None
     coordinator_epoch: Annotated[int, Field(gt=0)] | None = None
+    correlation_id: Identifier | None = None
+    caused_by_event_id: Identifier | None = None
+    conversation_id: Identifier | None = None
+    work_item_id: Identifier | None = None
     cooperation_override_grant_id: Identifier | None = None
-    expected_revision: Annotated[int, Field(gt=0)] | None = None
+    expected_revision: Annotated[int, Field(ge=0)] | None = None
     issued_at: AwareDatetime
     payload: dict[str, JsonValue] = Field(default_factory=dict)
     extensions: dict[str, ExtensionEnvelope] = Field(default_factory=dict)
-    signature: str | None = None
+    signature: SignatureEnvelope | None = None
+    verified_signing_hash: ContentHash | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade_legacy_signature(cls, value: Any) -> Any:
+        """Load pre-ingress stored Commands while retaining a complete signature envelope."""
+
+        if not isinstance(value, dict) or not isinstance(value.get("signature"), str):
+            return value
+        document = dict(value)
+        actor = document.get("actor")
+        if isinstance(actor, Principal):
+            actor_id = actor.id
+        elif isinstance(actor, dict) and isinstance(actor.get("id"), str):
+            actor_id = actor["id"]
+        else:
+            actor_id = "organization"
+        issued_at = document.get("issuedAt", document.get("issued_at"))
+        document["signature"] = {
+            "algorithm": "Ed25519",
+            "keyId": f"{actor_id}:legacy-command-key",
+            "createdAt": issued_at,
+            "value": value["signature"],
+        }
+        return document
 
     @field_validator("payload", mode="before")
     @classmethod
@@ -806,7 +835,11 @@ class Command(ProtocolModel):
         return value
 
     def signing_payload(self) -> dict[str, Any]:
-        return self.model_dump(mode="python", by_alias=True, exclude={"signature"})
+        return self.model_dump(
+            mode="python",
+            by_alias=True,
+            exclude={"signature", "verified_signing_hash"},
+        )
 
 
 class Event(ProtocolModel):
@@ -825,6 +858,8 @@ class Event(ProtocolModel):
     sequence: Annotated[int, Field(gt=0)] | None = None
     actor: Principal
     action_id: Identifier
+    correlation_id: Identifier | None = None
+    caused_by_event_id: Identifier | None = None
     command_hash: Identifier
     payload: dict[str, JsonValue]
     extensions: dict[str, ExtensionEnvelope] = Field(default_factory=dict)

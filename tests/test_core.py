@@ -10,6 +10,7 @@ from typing import Any, cast
 import asyncpg  # type: ignore[import-untyped]
 import pytest
 
+from missionweaveprotocol.auth import default_agent_key_id
 from missionweaveprotocol.canonical import canonical_hash, canonical_json
 from missionweaveprotocol.context import PolicyLogEntry, SnapshotArchive
 from missionweaveprotocol.control import HumanControl, HumanIdentity
@@ -23,6 +24,7 @@ from missionweaveprotocol.core import (
     NotFound,
     PolicyViolation,
     RevisionConflict,
+    StaleCoordinatorEpoch,
     StaleMembershipEpoch,
     StaleOwnershipEpoch,
     StaleSessionEpoch,
@@ -58,6 +60,7 @@ from missionweaveprotocol.models import (
     GrantCooperationOverridePayload,
     Group,
     GroupSnapshot,
+    Membership,
     Message,
     MessageAmendment,
     MessageAmendmentKind,
@@ -73,11 +76,13 @@ from missionweaveprotocol.models import (
     QueryKind,
     RedactMessagePayload,
     RegisterAgentCardPayload,
+    RenewCoordinatorLeasePayload,
     RequestMissionChangesPayload,
     ResourceBudget,
     RetractMessagePayload,
     Role,
     SelectionBasis,
+    SignatureEnvelope,
     StartWorkItemPayload,
     SubmitMissionPayload,
     SubmitWorkItemPayload,
@@ -119,6 +124,7 @@ class Scenario:
         self.system = Principal.system()
         self.owner = Principal.human("human:owner")
         self.epochs: dict[str, int] = {}
+        self.membership_epochs: dict[tuple[str, ActorType, str], int] = {}
         self.private_keys: dict[str, str] = {}
         self.action_number = 0
 
@@ -139,20 +145,81 @@ class Scenario:
         self.action_number += 1
         if session_epoch is None and actor.type is ActorType.AGENT:
             session_epoch = self.epochs[actor.id]
+        if (
+            membership_epoch is None
+            and group_id is not None
+            and actor.type in {ActorType.AGENT, ActorType.HUMAN}
+            and kind not in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}
+        ):
+            membership_epoch = self.membership_epochs.get((group_id, actor.type, actor.id))
+        resolved_action_id = action_id or f"action:{self.action_number}"
         return Command(
-            action_id=action_id or f"action:{self.action_number}",
+            action_id=resolved_action_id,
             kind=kind,
             actor=actor,
             group_id=group_id,
             session_epoch=session_epoch,
             membership_epoch=membership_epoch,
             coordinator_epoch=coordinator_epoch,
+            correlation_id=resolved_action_id,
+            conversation_id=getattr(payload, "conversation_id", None),
+            work_item_id=getattr(payload, "work_item_id", None),
             cooperation_override_grant_id=cooperation_override_grant_id,
             expected_revision=expected_revision,
             issued_at=self.clock(),
             payload=payload,
-            signature="test-signature",
+            signature=SignatureEnvelope(
+                key_id=default_agent_key_id(actor.id),
+                created_at=self.clock(),
+                value="test-signature",
+            ),
         )
+
+    async def perform(self, command: Command) -> Event:
+        event = await self.core.perform(command)
+        await self._refresh_memberships(command, event)
+        return event
+
+    async def _refresh_memberships(self, command: Command, event: Event) -> None:
+        candidates: set[tuple[str, Principal]] = set()
+        if command.group_id is not None and command.actor.type is not ActorType.SYSTEM:
+            candidates.add((command.group_id, command.actor))
+        if command.kind in {CommandKind.CREATE_MISSION, CommandKind.CREATE_FOLLOW_UP_MISSION}:
+            group_id = command.payload.get("groupId")
+            coordinator_id = command.payload.get("coordinatorId")
+            if isinstance(group_id, str) and isinstance(coordinator_id, str):
+                candidates.add((group_id, command.actor))
+                candidates.add((group_id, Principal.agent(coordinator_id)))
+        elif command.kind is CommandKind.CREATE_CHILD_MISSION:
+            child_group_id = command.payload.get("groupId")
+            coordinator_id = command.payload.get("coordinatorId")
+            if isinstance(child_group_id, str) and isinstance(coordinator_id, str):
+                candidates.add((child_group_id, command.actor))
+                candidates.add((child_group_id, Principal.agent(coordinator_id)))
+        elif command.kind in {CommandKind.ADD_MEMBERSHIP, CommandKind.END_MEMBERSHIP}:
+            principal = command.payload.get("principal")
+            if command.group_id is not None and isinstance(principal, dict):
+                candidates.add((command.group_id, Principal.model_validate(principal)))
+        elif command.kind is CommandKind.REPLACE_COORDINATOR:
+            previous = event.payload.get("previousCoordinatorId")
+            replacement = event.payload.get("coordinatorId")
+            if command.group_id is not None:
+                if isinstance(previous, str):
+                    candidates.add((command.group_id, Principal.agent(previous)))
+                if isinstance(replacement, str):
+                    candidates.add((command.group_id, Principal.agent(replacement)))
+
+        for group_id, principal in candidates:
+            membership = await self.core.query(
+                Query(
+                    kind=QueryKind.MEMBERSHIP,
+                    entity_id=principal.id,
+                    group_id=group_id,
+                    actor_type=principal.type,
+                )
+            )
+            if isinstance(membership, Membership):
+                self.membership_epochs[(group_id, principal.type, principal.id)] = membership.epoch
 
     async def register(self, agent_id: str, *capabilities: str) -> None:
         private_key, public_key = generate_keypair()
@@ -167,14 +234,14 @@ class Scenario:
             issued_at=self.clock(),
             signature="organization-signature",
         )
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.REGISTER_AGENT_CARD,
                 self.system,
                 RegisterAgentCardPayload(card=card),
             )
         )
-        event = await self.core.perform(
+        event = await self.perform(
             self.command(
                 CommandKind.OPEN_AGENT_SESSION,
                 self.system,
@@ -194,7 +261,7 @@ class Scenario:
         )
 
     async def reopen(self, agent_id: str) -> int:
-        event = await self.core.perform(
+        event = await self.perform(
             self.command(
                 CommandKind.OPEN_AGENT_SESSION,
                 self.system,
@@ -207,7 +274,7 @@ class Scenario:
     async def create_root(
         self, *, mission_id: str = "mission:root", group_id: str = "group:root"
     ) -> None:
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.CREATE_MISSION,
                 self.owner,
@@ -228,7 +295,7 @@ class Scenario:
         )
 
     async def add_worker(self, agent_id: str, *, group_id: str = "group:root") -> None:
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.ADD_MEMBERSHIP,
                 Principal.agent("agent:coordinator"),
@@ -253,7 +320,7 @@ class Scenario:
         )
 
     async def create_work(self, work_item_id: str = "work:implementation") -> None:
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.CREATE_WORK_ITEM,
                 Principal.agent("agent:coordinator"),
@@ -275,7 +342,7 @@ class Scenario:
         expires_at: datetime | None = None,
         reason: str = "MissionOwner approved a one-shot threshold exception",
     ) -> Event:
-        return await self.core.perform(
+        return await self.perform(
             self.command(
                 CommandKind.GRANT_COOPERATION_OVERRIDE,
                 self.owner,
@@ -295,7 +362,7 @@ class Scenario:
     async def offer(
         self, candidates: tuple[str, ...], *, work_item_id: str = "work:implementation"
     ) -> None:
-        await self.core.perform(
+        await self.perform(
             self.command(
                 CommandKind.OFFER_WORK_ITEM,
                 Principal.agent("agent:coordinator"),
@@ -430,7 +497,7 @@ async def _proposal_limited_scenario(
     await value.register("agent:coordinator", "coordination", "software.python")
     await value.create_root()
     coordinator = Principal.agent("agent:coordinator")
-    await value.core.perform(
+    await value.perform(
         value.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -449,7 +516,7 @@ async def test_authorization_is_derived_from_membership_roles(scenario: Scenario
     await scenario.add_worker("agent:worker-1")
 
     with pytest.raises(AuthorizationDenied):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.CREATE_WORK_ITEM,
                 Principal.agent("agent:worker-1"),
@@ -483,7 +550,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
     await limited.create_root()
 
     coordinator = Principal.agent("agent:coordinator")
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -495,7 +562,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         )
     )
     with pytest.raises(PolicyViolation, match="proposal rate"):
-        await core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -513,7 +580,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         target_command_kind=CommandKind.PROPOSE_WORK_ITEM,
         target_action_id="approved-override:proposal",
     )
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -541,7 +608,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         coordinator_lease_seconds=600,
     )
     with pytest.raises(PolicyViolation, match="delegation depth"):
-        await core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.CREATE_CHILD_MISSION,
                 coordinator,
@@ -557,7 +624,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         target_command_kind=CommandKind.CREATE_CHILD_MISSION,
         target_action_id="approved-override:delegation",
     )
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.CREATE_CHILD_MISSION,
             coordinator,
@@ -572,7 +639,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
     await limited.add_worker("agent:worker-1")
     await limited.create_work("work:first-active")
     await limited.offer(("agent:worker-1",), work_item_id="work:first-active")
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -580,7 +647,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
             group_id="group:root",
         )
     )
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.START_WORK_ITEM,
             Principal.agent("agent:worker-1"),
@@ -594,7 +661,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
     )
     await limited.create_work("work:second-active")
     await limited.offer(("agent:worker-1",), work_item_id="work:second-active")
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -608,7 +675,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         execution_lease_seconds=300,
     )
     with pytest.raises(PolicyViolation, match="active-work limit"):
-        await core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.START_WORK_ITEM,
                 Principal.agent("agent:worker-1"),
@@ -623,7 +690,7 @@ async def test_authoritative_cooperation_limits_require_scoped_override_grants()
         target_command_kind=CommandKind.START_WORK_ITEM,
         target_action_id="approved-override:active",
     )
-    await core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.START_WORK_ITEM,
             Principal.agent("agent:worker-1"),
@@ -640,7 +707,7 @@ async def test_cooperation_override_is_durable_audited_and_one_shot() -> None:
     limited, coordinator = await _proposal_limited_scenario()
 
     with pytest.raises(PolicyViolation, match="proposal rate"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -652,7 +719,7 @@ async def test_cooperation_override_is_durable_audited_and_one_shot() -> None:
             )
         )
     with pytest.raises(PolicyViolation, match="unknown, or forged"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -684,7 +751,7 @@ async def test_cooperation_override_is_durable_audited_and_one_shot() -> None:
         cooperation_override_grant_id="override:audited",
         action_id="action:audited-override",
     )
-    target_event = await limited.core.perform(target)
+    target_event = await limited.perform(target)
 
     grant = await limited.core.query(
         Query(kind=QueryKind.COOPERATION_OVERRIDE_GRANT, entity_id="override:audited")
@@ -701,10 +768,10 @@ async def test_cooperation_override_is_durable_audited_and_one_shot() -> None:
     ]
     assert policy_log[1].details["consumedEventId"] == target_event.id
 
-    retry = await limited.core.perform(target)
+    retry = await limited.perform(target)
     assert retry == target_event
     with pytest.raises(PolicyViolation, match="already consumed"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -724,7 +791,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
     limited, coordinator = await _proposal_limited_scenario()
 
     with pytest.raises(AuthorizationDenied, match="MissionOwner"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.GRANT_COOPERATION_OVERRIDE,
                 coordinator,
@@ -757,7 +824,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
         target_action_id="action:wrong-actor",
     )
     with pytest.raises(PolicyViolation, match="another beneficiary"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -779,7 +846,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
         target_action_id="action:expected",
     )
     with pytest.raises(PolicyViolation, match="another Action ID"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -801,7 +868,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
         target_action_id="action:wrong-group",
     )
     await limited.create_root(mission_id="mission:other", group_id="group:other")
-    await limited.core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -813,7 +880,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
         )
     )
     with pytest.raises(PolicyViolation, match="another Mission or Group"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -827,7 +894,7 @@ async def test_cooperation_override_rejects_wrong_approver_actor_action_group_an
             )
         )
 
-    system_event = await limited.core.perform(
+    system_event = await limited.perform(
         limited.command(
             CommandKind.GRANT_COOPERATION_OVERRIDE,
             limited.system,
@@ -865,7 +932,7 @@ async def test_cooperation_override_rejects_wrong_policy() -> None:
     for work_item_id in ("work:queued-one", "work:queued-two"):
         await limited.create_work(work_item_id)
         await limited.offer((worker.id,), work_item_id=work_item_id)
-    await limited.core.perform(
+    await limited.perform(
         limited.command(
             CommandKind.ACCEPT_WORK_OFFER,
             worker,
@@ -882,7 +949,7 @@ async def test_cooperation_override_rejects_wrong_policy() -> None:
     )
 
     with pytest.raises(PolicyViolation, match="another cooperation policy"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.ACCEPT_WORK_OFFER,
                 worker,
@@ -907,7 +974,7 @@ async def test_cooperation_override_expiry_and_failed_transition_do_not_consume_
     )
     limited.clock.advance(seconds=2)
     with pytest.raises(PolicyViolation, match="expired"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -934,7 +1001,7 @@ async def test_cooperation_override_expiry_and_failed_transition_do_not_consume_
         target_action_id="action:atomic",
     )
     with pytest.raises(AlreadyExists, match="WorkProposal"):
-        await limited.core.perform(
+        await limited.perform(
             limited.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 coordinator,
@@ -953,7 +1020,7 @@ async def test_cooperation_override_expiry_and_failed_transition_do_not_consume_
     assert isinstance(unconsumed, CooperationOverrideGrant)
     assert unconsumed.consumed_at is None
 
-    accepted = await limited.core.perform(
+    accepted = await limited.perform(
         limited.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -993,7 +1060,7 @@ async def test_cooperation_override_survives_sqlite_restart(tmp_path: Path) -> N
         clock=limited.clock,
         cooperation_limits=CooperationLimits(maximum_proposal_rate_per_minute=1),
     )
-    event = await limited.core.perform(
+    event = await limited.perform(
         limited.command(
             CommandKind.PROPOSE_WORK_ITEM,
             coordinator,
@@ -1020,7 +1087,7 @@ async def test_cooperation_override_survives_sqlite_restart(tmp_path: Path) -> N
 @pytest.mark.asyncio
 async def test_worker_proposes_and_coordinator_authorizes_work(scenario: Scenario) -> None:
     worker = Principal.agent("agent:worker-1")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ADD_MEMBERSHIP,
             Principal.agent("agent:coordinator"),
@@ -1030,7 +1097,7 @@ async def test_worker_proposes_and_coordinator_authorizes_work(scenario: Scenari
         )
     )
     contract = scenario.contract()
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.PROPOSE_WORK_ITEM,
             worker,
@@ -1040,7 +1107,7 @@ async def test_worker_proposes_and_coordinator_authorizes_work(scenario: Scenari
     )
 
     with pytest.raises(AuthorizationDenied):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.CREATE_WORK_ITEM,
                 worker,
@@ -1053,7 +1120,7 @@ async def test_worker_proposes_and_coordinator_authorizes_work(scenario: Scenari
             )
         )
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_WORK_ITEM,
             Principal.agent("agent:coordinator"),
@@ -1083,7 +1150,7 @@ async def test_worker_proposes_and_coordinator_authorizes_work(scenario: Scenari
 @pytest.mark.asyncio
 async def test_membership_epoch_fences_commands_after_role_change(scenario: Scenario) -> None:
     worker = Principal.agent("agent:worker-1")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ADD_MEMBERSHIP,
             Principal.agent("agent:coordinator"),
@@ -1092,7 +1159,7 @@ async def test_membership_epoch_fences_commands_after_role_change(scenario: Scen
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ADD_MEMBERSHIP,
             Principal.agent("agent:coordinator"),
@@ -1103,7 +1170,7 @@ async def test_membership_epoch_fences_commands_after_role_change(scenario: Scen
     )
 
     with pytest.raises(StaleMembershipEpoch):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.PROPOSE_WORK_ITEM,
                 worker,
@@ -1113,6 +1180,79 @@ async def test_membership_epoch_fences_commands_after_role_change(scenario: Scen
                 ),
                 group_id="group:root",
                 membership_epoch=1,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_missing_authority_epochs_cannot_bypass_core(scenario: Scenario) -> None:
+    coordinator = Principal.agent("agent:coordinator")
+    agent_message = scenario.command(
+        CommandKind.POST_MESSAGE,
+        coordinator,
+        PostMessagePayload(
+            message_id="message:authority-epoch-check",
+            conversation_id="group:root:mission",
+            content="Authority epochs are mandatory.",
+        ),
+        group_id="group:root",
+    )
+
+    with pytest.raises(StaleSessionEpoch):
+        await scenario.core.perform(agent_message.model_copy(update={"session_epoch": None}))
+    with pytest.raises(StaleMembershipEpoch):
+        await scenario.core.perform(agent_message.model_copy(update={"membership_epoch": None}))
+
+    human_command = scenario.command(
+        CommandKind.CANCEL_MISSION,
+        scenario.owner,
+        CancelMissionPayload(reason="must be rejected before cancellation"),
+        group_id="group:root",
+    )
+    with pytest.raises(StaleMembershipEpoch):
+        await scenario.core.perform(human_command.model_copy(update={"membership_epoch": None}))
+
+    coordinator_command = scenario.command(
+        CommandKind.RENEW_COORDINATOR_LEASE,
+        coordinator,
+        RenewCoordinatorLeasePayload(lease_seconds=600),
+        group_id="group:root",
+    )
+    with pytest.raises(StaleCoordinatorEpoch):
+        await scenario.core.perform(
+            coordinator_command.model_copy(update={"coordinator_epoch": None})
+        )
+
+
+@pytest.mark.asyncio
+async def test_expected_revision_zero_is_not_treated_as_omitted(scenario: Scenario) -> None:
+    coordinator = Principal.agent("agent:coordinator")
+    await scenario.perform(
+        scenario.command(
+            CommandKind.CREATE_WORK_ITEM,
+            coordinator,
+            CreateWorkItemPayload(
+                work_item_id="work:revision-zero",
+                contract=scenario.contract(),
+            ),
+            group_id="group:root",
+            coordinator_epoch=1,
+        )
+    )
+
+    with pytest.raises(RevisionConflict):
+        await scenario.perform(
+            scenario.command(
+                CommandKind.OFFER_WORK_ITEM,
+                coordinator,
+                OfferWorkItemPayload(
+                    work_item_id="work:revision-zero",
+                    candidate_agent_ids=(coordinator.id,),
+                    selection_basis=SelectionBasis(),
+                ),
+                group_id="group:root",
+                coordinator_epoch=1,
+                expected_revision=0,
             )
         )
 
@@ -1130,7 +1270,7 @@ async def test_human_execution_approval_is_scoped_to_current_ownership(
             "execution_approval": "human_required",
         }
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_WORK_ITEM,
             Principal.agent("agent:coordinator"),
@@ -1140,7 +1280,7 @@ async def test_human_execution_approval_is_scoped_to_current_ownership(
         )
     )
     await scenario.offer(("agent:worker-1",), work_item_id="work:deploy")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -1149,7 +1289,7 @@ async def test_human_execution_approval_is_scoped_to_current_ownership(
         )
     )
     with pytest.raises(PolicyViolation, match="Execution Approval"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.START_WORK_ITEM,
                 Principal.agent("agent:worker-1"),
@@ -1188,10 +1328,11 @@ async def test_human_execution_approval_is_scoped_to_current_ownership(
     assert isinstance(approval, ExecutionApproval)
     assert approval == approved_execution
     assert approval.ownership_epoch == 1
-    assert approval.signature == receipt.command.signature
+    assert receipt.command.signature is not None
+    assert approval.signature == receipt.command.signature.value
     assert human_identity.verify(receipt.command)
     assert approval.operations == ("production.deploy",)
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.START_WORK_ITEM,
             Principal.agent("agent:worker-1"),
@@ -1256,7 +1397,7 @@ async def test_message_correction_retraction_and_redaction_are_append_only(
     scenario: Scenario,
 ) -> None:
     coordinator = Principal.agent("agent:coordinator")
-    posted = await scenario.core.perform(
+    posted = await scenario.perform(
         scenario.command(
             CommandKind.POST_MESSAGE,
             coordinator,
@@ -1269,7 +1410,7 @@ async def test_message_correction_retraction_and_redaction_are_append_only(
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CORRECT_MESSAGE,
             coordinator,
@@ -1285,7 +1426,7 @@ async def test_message_correction_retraction_and_redaction_are_append_only(
     )
     await scenario.add_worker("agent:worker-1")
     with pytest.raises(AuthorizationDenied):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.RETRACT_MESSAGE,
                 Principal.agent("agent:worker-1"),
@@ -1297,7 +1438,7 @@ async def test_message_correction_retraction_and_redaction_are_append_only(
                 group_id="group:root",
             )
         )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.REDACT_MESSAGE,
             scenario.owner,
@@ -1346,8 +1487,8 @@ async def test_stable_action_id_deduplicates_and_rejects_content_collision(
         coordinator_epoch=1,
         action_id="stable-action",
     )
-    first = await scenario.core.perform(command)
-    duplicate = await scenario.core.perform(command)
+    first = await scenario.perform(command)
+    duplicate = await scenario.perform(command)
 
     assert duplicate == first
     assert (
@@ -1358,7 +1499,7 @@ async def test_stable_action_id_deduplicates_and_rejects_content_collision(
     changed = command.model_copy(deep=True)
     changed.payload["workItemId"] = "work:different"
     with pytest.raises(ActionIdCollision):
-        await scenario.core.perform(changed)
+        await scenario.perform(changed)
 
     accepted = await scenario.core.query(Query(kind=QueryKind.COMMAND, entity_id=first.id))
     assert accepted == command
@@ -1373,7 +1514,7 @@ async def test_session_and_ownership_epochs_fence_stale_workers(scenario: Scenar
     await scenario.reopen("agent:worker-1")
 
     with pytest.raises(StaleSessionEpoch):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ACCEPT_WORK_OFFER,
                 Principal.agent("agent:worker-1"),
@@ -1385,7 +1526,7 @@ async def test_session_and_ownership_epochs_fence_stale_workers(scenario: Scenar
             )
         )
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -1395,7 +1536,7 @@ async def test_session_and_ownership_epochs_fence_stale_workers(scenario: Scenar
     )
     scenario.clock.advance(seconds=11)
     await scenario.offer(("agent:worker-1",))
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -1410,7 +1551,7 @@ async def test_session_and_ownership_epochs_fence_stale_workers(scenario: Scenar
     assert isinstance(work, WorkItem)
     assert work.ownership_epoch > 1
     with pytest.raises(StaleOwnershipEpoch):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.START_WORK_ITEM,
                 Principal.agent("agent:worker-1"),
@@ -1441,7 +1582,7 @@ async def test_exclusive_offer_has_one_atomic_winner(scenario: Scenario) -> None
         for agent_id in ("agent:worker-1", "agent:worker-2")
     ]
     results = await asyncio.gather(
-        *(scenario.core.perform(command) for command in commands), return_exceptions=True
+        *(scenario.perform(command) for command in commands), return_exceptions=True
     )
 
     assert sum(isinstance(result, Event) for result in results) == 1
@@ -1457,7 +1598,7 @@ async def test_exclusive_offer_has_one_atomic_winner(scenario: Scenario) -> None
 async def test_invalid_work_item_transition_is_rejected(scenario: Scenario) -> None:
     await scenario.create_work()
     with pytest.raises(AuthorizationDenied):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.START_WORK_ITEM,
                 Principal.agent("agent:worker-1"),
@@ -1470,7 +1611,7 @@ async def test_invalid_work_item_transition_is_rejected(scenario: Scenario) -> N
             )
         )
     with pytest.raises(InvalidTransition):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.VERIFY_WORK_ITEM,
                 Principal.agent("agent:coordinator"),
@@ -1518,7 +1659,7 @@ async def test_child_failure_propagates_only_as_parent_policy_declares(
     parent_work_status: WorkItemStatus,
 ) -> None:
     await scenario.create_work()
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_CHILD_MISSION,
             Principal.agent("agent:coordinator"),
@@ -1539,7 +1680,7 @@ async def test_child_failure_propagates_only_as_parent_policy_declares(
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.FAIL_MISSION,
             Principal.agent("agent:worker-1"),
@@ -1563,7 +1704,7 @@ async def activate_one_work_item(scenario: Scenario) -> WorkItem:
     await scenario.add_worker("agent:worker-1")
     await scenario.create_work()
     await scenario.offer(("agent:worker-1",))
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent("agent:worker-1"),
@@ -1571,7 +1712,7 @@ async def activate_one_work_item(scenario: Scenario) -> WorkItem:
             group_id="group:root",
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.START_WORK_ITEM,
             Principal.agent("agent:worker-1"),
@@ -1611,7 +1752,7 @@ async def test_authoritative_artifact_publication_verifies_signature_and_provena
         signature="pending",
     )
     with pytest.raises(AuthorizationDenied, match="signature"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.PUBLISH_ARTIFACT,
                 Principal.agent("agent:worker-1"),
@@ -1625,7 +1766,7 @@ async def test_authoritative_artifact_publication_verifies_signature_and_provena
         )
 
     source = scenario.sign_artifact(unsigned)
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.PUBLISH_ARTIFACT,
             Principal.agent("agent:worker-1"),
@@ -1649,7 +1790,7 @@ async def test_authoritative_artifact_publication_verifies_signature_and_provena
         )
     )
     with pytest.raises(NotFound, match="provenance source"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.PUBLISH_ARTIFACT,
                 Principal.agent("agent:worker-1"),
@@ -1674,7 +1815,7 @@ async def test_authoritative_artifact_publication_verifies_signature_and_provena
         )
     )
     with pytest.raises(PolicyViolation, match="downgrade"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.PUBLISH_ARTIFACT,
                 Principal.agent("agent:worker-1"),
@@ -1708,7 +1849,7 @@ async def complete_one_work_item(scenario: Scenario) -> tuple[WorkItem, Artifact
             signature="pending",
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.PUBLISH_ARTIFACT,
             Principal.agent("agent:worker-1"),
@@ -1720,7 +1861,7 @@ async def complete_one_work_item(scenario: Scenario) -> tuple[WorkItem, Artifact
             group_id="group:root",
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.SUBMIT_WORK_ITEM,
             Principal.agent("agent:worker-1"),
@@ -1734,7 +1875,7 @@ async def complete_one_work_item(scenario: Scenario) -> tuple[WorkItem, Artifact
             group_id="group:root",
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.VERIFY_WORK_ITEM,
             Principal.agent("agent:coordinator"),
@@ -1756,7 +1897,7 @@ async def complete_one_work_item(scenario: Scenario) -> tuple[WorkItem, Artifact
 @pytest.mark.asyncio
 async def test_human_change_request_and_exact_revision_approval(scenario: Scenario) -> None:
     _, artifact = await complete_one_work_item(scenario)
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.SUBMIT_MISSION,
             Principal.agent("agent:coordinator"),
@@ -1770,7 +1911,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
     assert submitted.submitted_revision is not None
 
     with pytest.raises(RevisionConflict):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.APPROVE_MISSION,
                 scenario.owner,
@@ -1784,7 +1925,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
             )
         )
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.REQUEST_MISSION_CHANGES,
             scenario.owner,
@@ -1799,7 +1940,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
     assert isinstance(reopened, Mission)
     assert reopened.status is MissionStatus.ACTIVE
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.SUBMIT_MISSION,
             Principal.agent("agent:coordinator"),
@@ -1811,7 +1952,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
     resubmitted = await scenario.core.query(Query(kind=QueryKind.MISSION, entity_id="mission:root"))
     assert isinstance(resubmitted, Mission)
     assert resubmitted.submitted_revision is not None
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.APPROVE_MISSION,
             scenario.owner,
@@ -1839,7 +1980,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
     assert approved_group.archive_snapshot_id is None
 
     with pytest.raises(InvalidTransition):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.CREATE_WORK_ITEM,
                 Principal.agent("agent:coordinator"),
@@ -1852,7 +1993,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
             )
         )
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_FOLLOW_UP_MISSION,
             scenario.owner,
@@ -1881,7 +2022,7 @@ async def test_human_change_request_and_exact_revision_approval(scenario: Scenar
 async def test_failed_mission_group_remains_active_until_snapshot_exists(
     scenario: Scenario,
 ) -> None:
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.FAIL_MISSION,
             scenario.owner,
@@ -1985,7 +2126,7 @@ async def test_group_archive_requires_system_command_and_snapshot(
     scenario = archive_ready.scenario
 
     with pytest.raises(AuthorizationDenied, match="organization authority"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.owner,
@@ -1994,7 +2135,7 @@ async def test_group_archive_requires_system_command_and_snapshot(
             )
         )
     with pytest.raises(InvalidCommand, match="payload"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2024,7 +2165,7 @@ async def test_group_archive_rejects_untrusted_key_or_forged_signature(
 
     for action_id, snapshot in (("archive:wrong-key", wrong_key), ("archive:forged", forged)):
         with pytest.raises(AuthorizationDenied):
-            await scenario.core.perform(
+            await scenario.perform(
                 scenario.command(
                     CommandKind.ARCHIVE_GROUP,
                     scenario.system,
@@ -2059,7 +2200,7 @@ async def test_group_archive_rejects_wrong_group_stale_or_noncontiguous_history(
     )
 
     with pytest.raises(InvalidCommand, match="another Group"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2069,7 +2210,7 @@ async def test_group_archive_rejects_wrong_group_stale_or_noncontiguous_history(
             )
         )
     with pytest.raises(RevisionConflict, match="current Group sequence"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2079,7 +2220,7 @@ async def test_group_archive_rejects_wrong_group_stale_or_noncontiguous_history(
             )
         )
     with pytest.raises(InvalidCommand, match="contiguous authoritative history"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2114,7 +2255,7 @@ async def test_group_archive_rejects_non_system_creator_empty_policy_and_invalid
     )
 
     with pytest.raises(AuthorizationDenied, match="system authority"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2124,7 +2265,7 @@ async def test_group_archive_rejects_non_system_creator_empty_policy_and_invalid
             )
         )
     with pytest.raises(InvalidCommand, match="payload"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2134,7 +2275,7 @@ async def test_group_archive_rejects_non_system_creator_empty_policy_and_invalid
             )
         )
     with pytest.raises(InvalidCommand, match="predates"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2144,7 +2285,7 @@ async def test_group_archive_rejects_non_system_creator_empty_policy_and_invalid
             )
         )
     with pytest.raises(InvalidCommand, match="after the archive Command"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2160,7 +2301,7 @@ async def test_group_archive_rejects_double_archival(
     archive_ready: ArchiveReadyScenario,
 ) -> None:
     scenario = archive_ready.scenario
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ARCHIVE_GROUP,
             scenario.system,
@@ -2171,7 +2312,7 @@ async def test_group_archive_rejects_double_archival(
     )
 
     with pytest.raises(InvalidTransition, match="already archived"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.ARCHIVE_GROUP,
                 scenario.system,
@@ -2210,7 +2351,7 @@ async def test_sqlite_restart_preserves_archived_group_and_complete_snapshot(
     path = tmp_path / "missionweaveprotocol-archive.sqlite3"
     first_store = SQLiteStore(path)
     ready = await _archive_ready_scenario(first_store)
-    await ready.scenario.core.perform(
+    await ready.scenario.perform(
         ready.scenario.command(
             CommandKind.ARCHIVE_GROUP,
             ready.scenario.system,
@@ -2259,7 +2400,7 @@ async def test_postgresql_store_persists_state_and_replay_when_test_database_is_
 
     first_store = PostgreSQLStore(url)
     ready = await _archive_ready_scenario(first_store)
-    await ready.scenario.core.perform(
+    await ready.scenario.perform(
         ready.scenario.command(
             CommandKind.ARCHIVE_GROUP,
             ready.scenario.system,

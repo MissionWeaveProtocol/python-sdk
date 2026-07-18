@@ -1,14 +1,12 @@
 {
   "protocolVersion": "0.1",
-  "actionId": "urn:uuid:00000000-0000-4000-8000-000000000001",
+  "actionId": "urn:uuid:10000000-0000-4000-8000-000000000107",
   "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:coordinator"},
   "sessionEpoch": 7,
   "membershipEpoch": 3,
-  "coordinatorEpoch": 4,
   "groupId": "urn:missionweaveprotocol:group:mission-one",
   "kind": "mission.submit_for_approval",
-  "expectedRevision": 4,
-  "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000099",
+  "correlationId": "urn:uuid:10000000-0000-4000-8000-000000000108",
   "issuedAt": "2026-07-15T00:00:00Z",
   "payload": {
     "artifactHashes": [

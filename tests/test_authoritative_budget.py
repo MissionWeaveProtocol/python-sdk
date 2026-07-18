@@ -8,7 +8,7 @@ from pathlib import Path
 import asyncpg  # type: ignore[import-untyped]
 import pytest
 
-from missionweaveprotocol.auth import AgentIdentity
+from missionweaveprotocol.auth import AgentIdentity, default_agent_key_id
 from missionweaveprotocol.canonical import canonical_hash
 from missionweaveprotocol.core import ActionIdCollision, BudgetExceeded, Core
 from missionweaveprotocol.crypto import load_private_key, sign_canonical, verify_canonical
@@ -35,6 +35,7 @@ from missionweaveprotocol.models import (
     ResourceUsage,
     Role,
     SelectionBasis,
+    SignatureEnvelope,
     StartWorkItemPayload,
     WorkContract,
     WorkItem,
@@ -76,7 +77,7 @@ async def _scenario(
     scenario = Scenario(Core(store or InMemoryStore(), clock=clock), clock)
     await scenario.register(COORDINATOR_ID, "coordination", "software.python")
     await scenario.register(WORKER_ID, "software.python")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_MISSION,
             scenario.owner,
@@ -94,7 +95,7 @@ async def _scenario(
             group_id=GROUP_ID,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ADD_MEMBERSHIP,
             Principal.agent(COORDINATOR_ID),
@@ -127,7 +128,7 @@ async def _create_work(
     group_id: str = GROUP_ID,
     parent_work_item_id: str | None = None,
 ) -> None:
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_WORK_ITEM,
             Principal.agent(COORDINATOR_ID),
@@ -148,7 +149,7 @@ async def _start_work(
     *,
     group_id: str = GROUP_ID,
 ) -> WorkItem:
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.OFFER_WORK_ITEM,
             Principal.agent(COORDINATOR_ID),
@@ -164,7 +165,7 @@ async def _start_work(
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent(WORKER_ID),
@@ -174,7 +175,7 @@ async def _start_work(
     )
     accepted = await scenario.core.query(Query(kind=QueryKind.WORK_ITEM, entity_id=work_item_id))
     assert isinstance(accepted, WorkItem)
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.START_WORK_ITEM,
             Principal.agent(WORKER_ID),
@@ -213,7 +214,15 @@ def _signed_usage_command(
         action_id=action_id,
     ).model_copy(update={"signature": None})
     signature = sign_canonical(unsigned.signing_payload(), scenario.private_keys[WORKER_ID])
-    return unsigned.model_copy(update={"signature": signature})
+    return unsigned.model_copy(
+        update={
+            "signature": SignatureEnvelope(
+                key_id=default_agent_key_id(WORKER_ID),
+                created_at=unsigned.issued_at,
+                value=signature,
+            )
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -243,7 +252,7 @@ async def test_nested_work_and_child_mission_usage_rolls_up_without_double_reser
         parent_work_item_id="work:parent",
     )
     await _create_work(scenario, "work:sibling", _full_budget(20))
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_CHILD_MISSION,
             Principal.agent(COORDINATOR_ID),
@@ -263,7 +272,7 @@ async def test_nested_work_and_child_mission_usage_rolls_up_without_double_reser
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ADD_MEMBERSHIP,
             Principal.agent(COORDINATOR_ID),
@@ -278,7 +287,7 @@ async def test_nested_work_and_child_mission_usage_rolls_up_without_double_reser
     await _create_work(scenario, "work:leaf", _full_budget(50), group_id="group:child")
     leaf = await _start_work(scenario, "work:leaf", group_id="group:child")
 
-    event = await scenario.core.perform(
+    event = await scenario.perform(
         _signed_usage_command(
             scenario,
             leaf,
@@ -316,12 +325,12 @@ async def test_signed_usage_is_idempotent_collision_safe_and_atomic_on_overflow(
     assert isinstance(card, AgentCard)
     assert verify_canonical(
         command.signing_payload(),
-        command.signature,
+        command.signature.value,
         card.public_key,
     )
 
-    accepted = await scenario.core.perform(command)
-    duplicate = await scenario.core.perform(command)
+    accepted = await scenario.perform(command)
+    duplicate = await scenario.perform(command)
     assert accepted.id == duplicate.id
     assert accepted.payload["usageDelta"] == _full_usage(2).model_dump(mode="json", by_alias=True)
     assert accepted.payload["remainingBudget"] == _full_budget(3).model_dump(
@@ -338,12 +347,12 @@ async def test_signed_usage_is_idempotent_collision_safe_and_atomic_on_overflow(
         action_id="usage:stable",
     )
     with pytest.raises(ActionIdCollision):
-        await scenario.core.perform(collision)
+        await scenario.perform(collision)
 
     before = await scenario.core.replay(GROUP_ID)
     before_hash = canonical_hash(before[-1])
     with pytest.raises(BudgetExceeded):
-        await scenario.core.perform(
+        await scenario.perform(
             _signed_usage_command(
                 scenario,
                 work,
@@ -364,7 +373,7 @@ async def test_concurrent_final_capacity_commands_accept_exactly_one() -> None:
     scenario = await _scenario(root_budget=_full_budget(5))
     await _create_work(scenario, "work:race", _full_budget(5))
     work = await _start_work(scenario, "work:race")
-    await scenario.core.perform(
+    await scenario.perform(
         _signed_usage_command(scenario, work, _full_usage(4), action_id="usage:initial")
     )
     commands = tuple(
@@ -373,7 +382,7 @@ async def test_concurrent_final_capacity_commands_accept_exactly_one() -> None:
     )
 
     results = await asyncio.gather(
-        *(scenario.core.perform(command) for command in commands),
+        *(scenario.perform(command) for command in commands),
         return_exceptions=True,
     )
 
@@ -452,7 +461,7 @@ async def test_offline_reconciliation_charges_old_lease_usage_atomically(
     assert isinstance(membership, Membership)
     membership_epoch = membership.epoch
 
-    accepted = await scenario.core.perform(
+    accepted = await scenario.perform(
         rebase_offline_command(
             first,
             identity,
@@ -484,7 +493,7 @@ async def test_offline_reconciliation_charges_old_lease_usage_atomically(
 
     before_overflow = await scenario.core.replay(work.group_id)
     with pytest.raises(BudgetExceeded):
-        await scenario.core.perform(
+        await scenario.perform(
             rebase_offline_command(
                 overflow,
                 identity,
@@ -511,7 +520,7 @@ async def _assert_sql_restart(store: AuthoritativeStore, reopened: Authoritative
     scenario = await _scenario(store=store, root_budget=_full_budget(10))
     await _create_work(scenario, "work:persisted", _full_budget(10))
     work = await _start_work(scenario, "work:persisted")
-    event = await scenario.core.perform(
+    event = await scenario.perform(
         _signed_usage_command(scenario, work, _full_usage(3), action_id="usage:persisted")
     )
     await store.close()

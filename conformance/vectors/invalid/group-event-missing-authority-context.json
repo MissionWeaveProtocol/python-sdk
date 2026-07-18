@@ -1,0 +1,25 @@
+{
+  "protocolVersion": "0.1",
+  "eventId": "urn:uuid:10000000-0000-4000-8000-000000000109",
+  "kind": "message.posted",
+  "actor": {"type": "agent", "id": "urn:missionweaveprotocol:agent:worker-one"},
+  "cause": {
+    "type": "command",
+    "id": "urn:uuid:10000000-0000-4000-8000-000000000103"
+  },
+  "correlationId": "urn:uuid:10000000-0000-4000-8000-000000000104",
+  "occurredAt": "2026-07-15T00:00:01Z",
+  "payload": {
+    "messageId": "urn:missionweaveprotocol:message:missing-group-context"
+  },
+  "acceptedBy": {
+    "type": "service",
+    "id": "urn:missionweaveprotocol:service:group-authority"
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:group-authority",
+    "createdAt": "2026-07-15T00:00:01Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

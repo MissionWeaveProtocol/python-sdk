@@ -65,7 +65,7 @@ uv run mypy
 uv run missionweaveprotocol-conformance --root .
 ```
 
-The conformance command validates all 43 vendored vectors against the 21 vendored Draft 2020-12
+The conformance command validates all 52 vendored vectors against the 21 vendored Draft 2020-12
 schemas with format checking. It exits non-zero on a validity mismatch. It can also validate a
 separate protocol checkout or release bundle:
 

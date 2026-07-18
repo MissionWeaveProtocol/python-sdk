@@ -1,0 +1,27 @@
+{
+  "protocolVersion": "0.1",
+  "eventId": "urn:uuid:00000000-0000-4000-8000-000000000105",
+  "kind": "ext.missionweaveprotocol.identity.session_opened",
+  "actor": {"type": "service", "id": "urn:missionweaveprotocol:service:identity-authority"},
+  "cause": {
+    "type": "command",
+    "id": "urn:uuid:00000000-0000-4000-8000-000000000103"
+  },
+  "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000104",
+  "occurredAt": "2026-07-15T00:00:01Z",
+  "payload": {
+    "agentId": "urn:missionweaveprotocol:agent:worker-one",
+    "sessionEpoch": 1
+  },
+  "acceptedBy": {
+    "type": "service",
+    "id": "urn:missionweaveprotocol:service:identity-authority"
+  },
+  "commandHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:identity-authority",
+    "createdAt": "2026-07-15T00:00:01Z",
+    "value": "c2lnbmF0dXJl"
+  }
+}

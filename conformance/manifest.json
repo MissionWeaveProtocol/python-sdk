@@ -6,9 +6,27 @@
     "valid": true
   },
   {
+    "name": "valid human Mission creation Command without pre-existing epochs",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/valid/human-mission-create-command.json",
+    "valid": true
+  },
+  {
+    "name": "valid Organization service Session activation Command",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/valid/service-session-open-command.json",
+    "valid": true
+  },
+  {
     "name": "valid event envelope",
     "schema": "schemas/event.schema.json",
     "instance": "conformance/vectors/valid/event.json",
+    "valid": true
+  },
+  {
+    "name": "valid Organization-scoped Session activation Event",
+    "schema": "schemas/event.schema.json",
+    "instance": "conformance/vectors/valid/organization-session-opened-event.json",
     "valid": true
   },
   {
@@ -120,15 +138,51 @@
     "valid": true
   },
   {
+    "name": "invalid internal stale Coordinator error code on the wire",
+    "schema": "schemas/error.schema.json",
+    "instance": "conformance/vectors/invalid/error-unknown-stale-coordinator-code.json",
+    "valid": false
+  },
+  {
     "name": "invalid unsigned durable Command",
     "schema": "schemas/command.schema.json",
     "instance": "conformance/vectors/invalid/command-missing-signature.json",
     "valid": false
   },
   {
+    "name": "invalid human Command carrying an Agent Session Epoch",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/human-command-with-session-epoch.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Agent Group Command without Session Epoch",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/agent-command-missing-session-epoch.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Agent Group Command without Membership Epoch",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/agent-command-missing-membership-epoch.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Coordinator-only Command without Coordinator Epoch",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/coordinator-command-missing-coordinator-epoch.json",
+    "valid": false
+  },
+  {
     "name": "invalid Event sequence zero",
     "schema": "schemas/event.schema.json",
     "instance": "conformance/vectors/invalid/event-zero-sequence.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Group Event without Group ordering context",
+    "schema": "schemas/event.schema.json",
+    "instance": "conformance/vectors/invalid/group-event-missing-authority-context.json",
     "valid": false
   },
   {

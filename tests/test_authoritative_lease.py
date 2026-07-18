@@ -67,7 +67,7 @@ async def _queue_work(
     worker_id: str = WORKER_ONE,
     ownership_lease_seconds: int = 900,
 ) -> WorkItem:
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CREATE_WORK_ITEM,
             Principal.agent(COORDINATOR_ID),
@@ -79,7 +79,7 @@ async def _queue_work(
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.OFFER_WORK_ITEM,
             Principal.agent(COORDINATOR_ID),
@@ -95,7 +95,7 @@ async def _queue_work(
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent(worker_id),
@@ -130,7 +130,7 @@ async def _start_queued_work(
         group_id=queued.group_id,
         action_id=action_id,
     )
-    event = await scenario.core.perform(command)
+    event = await scenario.perform(command)
     active = await scenario.core.query(Query(kind=QueryKind.WORK_ITEM, entity_id=queued.id))
     assert isinstance(active, WorkItem)
     assert active.execution_lease_id is not None
@@ -210,8 +210,8 @@ async def test_duplicate_start_command_returns_the_same_execution_lease_id() -> 
         action_id="action:stable-start",
     )
 
-    first = await scenario.core.perform(command)
-    duplicate = await scenario.core.perform(command)
+    first = await scenario.perform(command)
+    duplicate = await scenario.perform(command)
 
     first_lease = ExecutionLease.model_validate(first.payload["executionLease"])
     duplicate_lease = ExecutionLease.model_validate(duplicate.payload["executionLease"])
@@ -227,7 +227,7 @@ async def test_renewal_retains_identity_increments_count_and_extends_projection(
     active, original = await _activate_work(scenario, "work:renew")
     scenario.clock.advance(seconds=60)
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.RENEW_EXECUTION_LEASE,
             Principal.agent(WORKER_ONE),
@@ -259,7 +259,7 @@ async def test_renewal_retains_identity_increments_count_and_extends_projection(
 async def test_stale_lease_id_is_rejected_after_new_lease_in_same_ownership_epoch() -> None:
     scenario = await _scenario()
     active, old_lease = await _activate_work(scenario, "work:lease-aba")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CHECKPOINT_WORK_ITEM,
             Principal.agent(WORKER_ONE),
@@ -280,7 +280,7 @@ async def test_stale_lease_id_is_rejected_after_new_lease_in_same_ownership_epoc
     assert new_lease.lease_id != old_lease.lease_id
     assert new_lease.ownership_epoch == old_lease.ownership_epoch == resumed.ownership_epoch
     with pytest.raises(LeaseExpired, match="stale Execution Lease ID"):
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.RENEW_EXECUTION_LEASE,
                 Principal.agent(WORKER_ONE),
@@ -336,7 +336,7 @@ async def test_execution_completion_transitions_release_the_lease(transition: st
                 signature="pending",
             )
         )
-        await scenario.core.perform(
+        await scenario.perform(
             scenario.command(
                 CommandKind.PUBLISH_ARTIFACT,
                 Principal.agent(WORKER_ONE),
@@ -358,7 +358,7 @@ async def test_execution_completion_transitions_release_the_lease(transition: st
         kind = CommandKind.SUBMIT_WORK_ITEM
         expected_status = WorkItemStatus.SUBMITTED
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             kind,
             Principal.agent(WORKER_ONE),
@@ -446,7 +446,7 @@ async def test_expired_reassignment_closes_old_lease_as_expired() -> None:
     )
     scenario.clock.advance(seconds=61)
 
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.OFFER_WORK_ITEM,
             Principal.agent(COORDINATOR_ID),
@@ -462,7 +462,7 @@ async def test_expired_reassignment_closes_old_lease_as_expired() -> None:
             coordinator_epoch=1,
         )
     )
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.ACCEPT_WORK_OFFER,
             Principal.agent(WORKER_TWO),
@@ -494,7 +494,7 @@ async def test_sqlite_restart_persists_active_and_terminal_execution_leases(
     scenario = await _scenario(store=first_store)
     active_work, active_lease = await _activate_work(scenario, "work:persisted-active")
     terminal_work, terminal_lease = await _activate_work(scenario, "work:persisted-terminal")
-    await scenario.core.perform(
+    await scenario.perform(
         scenario.command(
             CommandKind.CHECKPOINT_WORK_ITEM,
             Principal.agent(WORKER_ONE),

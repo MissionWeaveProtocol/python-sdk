@@ -30,6 +30,7 @@ from .models import (
     Query,
     QueryKind,
     RegisterAgentCardPayload,
+    SignatureEnvelope,
 )
 from .store import SQLStore
 
@@ -149,7 +150,11 @@ async def _bootstrap_agent_cards(core: Core, cards: Sequence[AgentCard]) -> None
                 actor=Principal.system("organization-registry"),
                 issued_at=card.issued_at,
                 payload=cast(dict[str, JsonValue], payload),
-                signature=card.signature,
+                signature=SignatureEnvelope(
+                    key_id="organization-registry:command-key",
+                    created_at=card.issued_at,
+                    value=card.signature,
+                ),
             )
         )
 

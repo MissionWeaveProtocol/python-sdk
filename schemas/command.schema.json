@@ -8,15 +8,65 @@
     "protocolVersion",
     "actionId",
     "actor",
-    "sessionEpoch",
-    "membershipEpoch",
-    "groupId",
     "kind",
     "correlationId",
     "issuedAt",
     "payload",
     "signature"
   ],
+  "$defs": {
+    "coreCommandKind": {
+      "enum": [
+        "mission.create",
+        "mission.assign_coordinator",
+        "mission.renew_coordinator",
+        "mission.submit_for_approval",
+        "mission.approve",
+        "mission.request_changes",
+        "mission.cancel",
+        "mission.terminate",
+        "mission.create_child",
+        "mission.create_follow_up",
+        "membership.change",
+        "membership.end",
+        "membership.grant_delegation",
+        "message.post",
+        "message.correct",
+        "message.retract",
+        "message.redact",
+        "work.propose",
+        "work.authorize",
+        "work.offer",
+        "work.accept_offer",
+        "work.start",
+        "work.checkpoint",
+        "work.block",
+        "work.unblock",
+        "work.submit",
+        "work.accept_result",
+        "work.fail",
+        "work.cancel",
+        "artifact.publish",
+        "approval.grant_execution",
+        "policy.grant_cooperation_override"
+      ]
+    },
+    "organizationScopedKind": {
+      "enum": [
+        "ext.missionweaveprotocol.registry.agent_card_register",
+        "ext.missionweaveprotocol.identity.session_open"
+      ]
+    },
+    "coordinatorOnlyKind": {
+      "enum": [
+        "mission.renew_coordinator",
+        "mission.submit_for_approval",
+        "mission.create_child",
+        "membership.grant_delegation",
+        "work.accept_result"
+      ]
+    }
+  },
   "properties": {
     "protocolVersion": {
       "$ref": "common.schema.json#/$defs/protocolVersion"
@@ -31,6 +81,9 @@
       "$ref": "common.schema.json#/$defs/positiveInteger"
     },
     "membershipEpoch": {
+      "$ref": "common.schema.json#/$defs/positiveInteger"
+    },
+    "coordinatorEpoch": {
       "$ref": "common.schema.json#/$defs/positiveInteger"
     },
     "groupId": {
@@ -48,40 +101,7 @@
     "kind": {
       "anyOf": [
         {
-          "enum": [
-            "mission.create",
-            "mission.assign_coordinator",
-            "mission.renew_coordinator",
-            "mission.submit_for_approval",
-            "mission.approve",
-            "mission.request_changes",
-            "mission.cancel",
-            "mission.terminate",
-            "mission.create_child",
-            "mission.create_follow_up",
-            "membership.change",
-            "membership.end",
-            "membership.grant_delegation",
-            "message.post",
-            "message.correct",
-            "message.retract",
-            "message.redact",
-            "work.propose",
-            "work.authorize",
-            "work.offer",
-            "work.accept_offer",
-            "work.start",
-            "work.checkpoint",
-            "work.block",
-            "work.unblock",
-            "work.submit",
-            "work.accept_result",
-            "work.fail",
-            "work.cancel",
-            "artifact.publish",
-            "approval.grant_execution",
-            "policy.grant_cooperation_override"
-          ]
+          "$ref": "#/$defs/coreCommandKind"
         },
         {
           "type": "string",
@@ -111,5 +131,246 @@
     "signature": {
       "$ref": "common.schema.json#/$defs/signature"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "mission.terminate"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "enum": ["agent", "service"]
+              }
+            },
+            "required": ["type"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "agent"
+              }
+            },
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "required": ["groupId", "sessionEpoch", "membershipEpoch"]
+      },
+      "else": {
+        "not": {
+          "required": ["sessionEpoch"]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "service"
+              }
+            },
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": ["membershipEpoch"]
+            },
+            {
+              "required": ["coordinatorEpoch"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/coreCommandKind"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["groupId"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "human"
+              }
+            },
+            "required": ["type"]
+          },
+          "kind": {
+            "not": {
+              "enum": ["mission.create", "mission.create_follow_up"]
+            }
+          }
+        },
+        "required": ["actor", "kind"]
+      },
+      "then": {
+        "required": ["groupId", "membershipEpoch"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "mission.create"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "$ref": "common.schema.json#/$defs/humanActor"
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": ["membershipEpoch"]
+            },
+            {
+              "required": ["coordinatorEpoch"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "mission.create_follow_up"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "$ref": "common.schema.json#/$defs/humanActor"
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": ["membershipEpoch"]
+            },
+            {
+              "required": ["coordinatorEpoch"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/organizationScopedKind"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "service"
+              }
+            },
+            "required": ["type"]
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": ["groupId"]
+            },
+            {
+              "required": ["sessionEpoch"]
+            },
+            {
+              "required": ["membershipEpoch"]
+            },
+            {
+              "required": ["coordinatorEpoch"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/coordinatorOnlyKind"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "actor": {
+            "$ref": "common.schema.json#/$defs/agentActor"
+          }
+        },
+        "required": ["coordinatorEpoch"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {
+              "type": {
+                "const": "agent"
+              }
+            },
+            "required": ["type"]
+          },
+          "kind": {
+            "const": "mission.terminate"
+          }
+        },
+        "required": ["actor", "kind"]
+      },
+      "then": {
+        "required": ["coordinatorEpoch"]
+      }
+    }
+  ]
 }

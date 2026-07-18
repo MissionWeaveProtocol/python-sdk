@@ -27,6 +27,7 @@ from .delegation import (
     DelegationViolationKind,
     budget_within_ceiling,
 )
+from .ingress import CommandIngress
 from .lease import ExecutionLease, LeaseState
 from .models import (
     AcceptWorkOfferPayload,
@@ -91,6 +92,7 @@ from .models import (
     RequestMissionChangesPayload,
     RetractMessagePayload,
     Role,
+    SignatureEnvelope,
     StartWorkItemPayload,
     SubmitMissionPayload,
     SubmitWorkItemPayload,
@@ -295,7 +297,7 @@ class Core:
         """Validate and atomically apply one signed, idempotent Command."""
 
         now = self._now()
-        command_hash = canonical_hash(command.signing_payload())
+        command_hash = command.verified_signing_hash or canonical_hash(command.signing_payload())
 
         def apply(state: AuthoritativeState) -> Event:
             dedup_key = deduplication_key(
@@ -445,7 +447,15 @@ class Core:
         if payload_type is None:
             raise InvalidCommand("unsupported Command kind", kind=command.kind.value)
         try:
-            return cast(CommandPayload, payload_type.model_validate(command.payload))
+            return cast(
+                CommandPayload,
+                payload_type.model_validate(
+                    CommandIngress.execution_payload(
+                        command,
+                        payload_fields=payload_type.model_fields,
+                    )
+                ),
+            )
         except PydanticValidationError as exc:
             raise InvalidCommand(
                 "Command payload does not match its schema",
@@ -465,17 +475,32 @@ class Core:
                     expected=current,
                     received=command.session_epoch,
                 )
-            if command.group_id is not None and command.membership_epoch is not None:
-                membership = self._membership(state, command.group_id, command.actor)
-                current_membership_epoch = membership.epoch if membership is not None else None
-                if membership is None or command.membership_epoch != membership.epoch:
-                    raise StaleMembershipEpoch(
-                        "Command carries a stale Membership epoch",
-                        expected=current_membership_epoch,
-                        received=command.membership_epoch,
-                    )
         elif command.session_epoch is not None:
             raise InvalidCommand("only Agent Commands carry a session epoch")
+
+        membership_exempt = command.kind in {
+            CommandKind.CREATE_MISSION,
+            CommandKind.CREATE_FOLLOW_UP_MISSION,
+        }
+        if (
+            command.actor.type in {ActorType.AGENT, ActorType.HUMAN}
+            and not membership_exempt
+            and command.group_id is not None
+            and command.group_id in state.groups
+        ):
+            membership = self._membership(state, command.group_id, command.actor)
+            if membership is None:
+                raise AuthorizationDenied(
+                    "Command actor lacks a Group Membership",
+                    group_id=command.group_id,
+                    actor_id=command.actor.id,
+                )
+            if command.membership_epoch != membership.epoch:
+                raise StaleMembershipEpoch(
+                    "Command requires the current Membership epoch",
+                    expected=membership.epoch,
+                    received=command.membership_epoch,
+                )
 
     def _enforce_cooperation_policy(
         self,
@@ -1517,7 +1542,7 @@ class Core:
             reason=payload.reason,
             granted_at=now,
             expires_at=payload.expires_at,
-            signature=cast(str, command.signature),
+            signature=cast(SignatureEnvelope, command.signature).value,
         )
         state.cooperation_override_grants[grant.id] = grant
         event = self._emit(
@@ -2277,7 +2302,7 @@ class Core:
             approved_at=now,
             expires_at=expires_at,
             comments=payload.comments,
-            signature=cast(str, command.signature),
+            signature=cast(SignatureEnvelope, command.signature).value,
         )
         state.execution_approvals[approval.id] = approval
         return self._emit(
@@ -2862,7 +2887,7 @@ class Core:
             approver=command.actor,
             approved_at=now,
             comments=payload.comments,
-            signature=cast(str, command.signature),
+            signature=cast(SignatureEnvelope, command.signature).value,
         )
         state.approvals[approval.id] = approval
         mission.status = MissionStatus.APPROVED
@@ -3165,6 +3190,8 @@ class Core:
             sequence=sequence,
             actor=command.actor,
             action_id=command.action_id,
+            correlation_id=command.correlation_id,
+            caused_by_event_id=command.caused_by_event_id,
             command_hash=command_hash,
             payload=normalized_payload,
             extensions=command.extensions,
