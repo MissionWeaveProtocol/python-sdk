@@ -1,0 +1,45 @@
+{
+  "contextPackageId": "urn:missionweaveprotocol:context-package:developer-one-v1",
+  "version": 1,
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
+  "sourceEventRange": {
+    "fromSequence": 1,
+    "toSequence": 35,
+    "eventIds": [
+      "urn:missionweaveprotocol:event:mission-created",
+      "urn:missionweaveprotocol:event:requirements-accepted",
+      "urn:missionweaveprotocol:event:implementation-offered"
+    ]
+  },
+  "artifactHashes": [
+    "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  ],
+  "summary": "Implement pagination using the accepted requirements artifact.",
+  "decisions": [
+    {
+      "description": "Use cursor-based rather than offset pagination.",
+      "sourceEventIds": [
+        "urn:missionweaveprotocol:event:requirements-accepted"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not change the public error schema."
+  ],
+  "unresolvedQuestions": [
+    "Confirm the maximum page size."
+  ],
+  "generatedBy": {
+    "type": "agent",
+    "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+  },
+  "generatedAt": "2026-07-15T00:10:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+    "createdAt": "2026-07-15T00:10:00Z",
+    "value": "2SJwAboZ-FZDpj4gEFvncl_TLOh9zRXR-t1R5XE91FUJwg1cW43Rhi44yhWInHjZXFrnZ2CKMGjxgzof4tN0Bg"
+  }
+}

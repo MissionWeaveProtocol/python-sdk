@@ -1,0 +1,88 @@
+{
+  "organizationId": "urn:missionweaveprotocol:organization:acme",
+  "bindings": [
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-rfc8032-1",
+      "principal": {
+        "type": "agent",
+        "id": "urn:missionweaveprotocol:agent:crypto-vector-coordinator"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "validFrom": "2026-07-15T08:00:00+08:00",
+      "validityHistory": [
+        {
+          "sequence": 1,
+          "recordedAt": "2026-07-16T00:00:00Z",
+          "validUntil": "2026-07-15T00:00:00.1234560000000000002Z"
+        }
+      ]
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-developer-one",
+      "principal": {
+        "type": "agent",
+        "id": "urn:missionweaveprotocol:agent:developer-one"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "7D-keB5WWULuPx53Zwf9j2JVLLTq4btqsJE1ubL66Vk",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-group-authority",
+      "principal": {
+        "type": "service",
+        "id": "urn:missionweaveprotocol:service:group-authority"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "NXg_QEu9GxGtV-LaPKbmLTizLAFmYXYfxxIwbCRQMPM",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-mission-owner",
+      "principal": {
+        "type": "human",
+        "id": "urn:missionweaveprotocol:human:mission-owner"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "6bCVG-sa0WcAz7C4h32_E-fmChJCZWhEsOpOpCuFSvQ",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-organization-registry",
+      "principal": {
+        "type": "service",
+        "id": "urn:missionweaveprotocol:service:organization-registry"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "INENpI4KMQxdZ7NpFLTltBA3E8jMmOCTzd7h2ttzD04",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-security-owner",
+      "principal": {
+        "type": "human",
+        "id": "urn:missionweaveprotocol:human:security-owner"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "3QQY3TXWIo9C5An8Tb25kEfjCw_Qa5zJ2JO1H3BD_rk",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    },
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-test-reviewer",
+      "principal": {
+        "type": "agent",
+        "id": "urn:missionweaveprotocol:agent:test-reviewer"
+      },
+      "algorithm": "Ed25519",
+      "publicKey": "rKDfsWAggf0Q_zwHuO06-LedcEVvT7piBxZkPAXqD98",
+      "validFrom": "2026-07-01T00:00:00Z",
+      "validityHistory": []
+    }
+  ]
+}

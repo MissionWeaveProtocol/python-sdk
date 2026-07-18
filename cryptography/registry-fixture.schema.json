@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweaveprotocol.dev/cryptography/0.1/registry-fixture.schema.json",
+  "title": "MissionWeaveProtocol 0.1 Registry Test Fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["organizationId", "bindings"],
+  "properties": {
+    "organizationId": {
+      "$ref": "#/$defs/absoluteId"
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/binding"
+      },
+      "minItems": 1,
+      "maxItems": 64
+    }
+  },
+  "$defs": {
+    "absoluteId": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$(?![\\s\\S])",
+      "maxLength": 512
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": ["agent", "human", "service"]
+        },
+        "id": {
+          "$ref": "#/$defs/absoluteId"
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "recordedAt"],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "recordedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "validUntil": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revokedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyId",
+        "principal",
+        "algorithm",
+        "publicKey",
+        "validFrom",
+        "validityHistory"
+      ],
+      "properties": {
+        "keyId": {
+          "$ref": "#/$defs/absoluteId"
+        },
+        "principal": {
+          "$ref": "#/$defs/principal"
+        },
+        "algorithm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "publicKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "validFrom": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "validityHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/status"
+          },
+          "maxItems": 64
+        }
+      }
+    }
+  }
+}

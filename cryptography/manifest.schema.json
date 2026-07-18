@@ -1,0 +1,595 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweaveprotocol.dev/cryptography/0.1/manifest.schema.json",
+  "title": "MissionWeaveProtocol 0.1 Cryptography Conformance Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "manifestVersion",
+    "protocolVersion",
+    "profileId",
+    "semanticStages",
+    "fixtureSchemas",
+    "artifactDigest",
+    "profiles",
+    "artifacts",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://missionweaveprotocol.dev/cryptography/0.1/manifest.schema.json"
+    },
+    "manifestVersion": {
+      "const": 1
+    },
+    "protocolVersion": {
+      "const": "0.1"
+    },
+    "profileId": {
+      "const": "missionweaveprotocol.signed-document-verification.v0.1"
+    },
+    "semanticStages": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "parse"},
+        {"const": "schema"},
+        {"const": "signature-envelope"},
+        {"const": "key-resolution"},
+        {"const": "canonicalization"},
+        {"const": "signature"},
+        {"const": "complete"}
+      ],
+      "items": false,
+      "minItems": 7,
+      "maxItems": 7
+    },
+    "fixtureSchemas": {
+      "$ref": "#/$defs/fixtureSchemas"
+    },
+    "artifactDigest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profile"
+      },
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "minItems": 1
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/case"
+      },
+      "minItems": 22,
+      "maxItems": 22
+    }
+  },
+  "$defs": {
+    "fixtureSchemas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry", "signingKey"],
+      "properties": {
+        "registry": {
+          "const": "cryptography/registry-fixture.schema.json"
+        },
+        "signingKey": {
+          "const": "cryptography/signing-key-fixture.schema.json"
+        }
+      }
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+      "maxLength": 512
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$(?![\\s\\S])",
+      "maxLength": 160
+    },
+    "absoluteId": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$(?![\\s\\S])",
+      "maxLength": 512
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$(?![\\s\\S])"
+    },
+    "base64url": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$(?![\\s\\S])",
+      "minLength": 2,
+      "maxLength": 4096
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": ["agent", "human", "service"]
+        },
+        "id": {
+          "$ref": "#/$defs/absoluteId"
+        }
+      }
+    },
+    "principalObjectSigner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "pointer"],
+      "properties": {
+        "rule": {
+          "const": "principal-object"
+        },
+        "pointer": {
+          "type": "string",
+          "pattern": "^/(?:[^~/]|~0|~1)+$(?![\\s\\S])",
+          "maxLength": 256
+        }
+      }
+    },
+    "agentIdSigner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "idPointer"],
+      "properties": {
+        "rule": {
+          "const": "agent-id"
+        },
+        "idPointer": {
+          "type": "string",
+          "pattern": "^/(?:[^~/]|~0|~1)+(?:/(?:[^~/]|~0|~1)+)*$(?![\\s\\S])",
+          "maxLength": 256
+        }
+      }
+    },
+    "servicePrincipalSigner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule"],
+      "properties": {
+        "rule": {
+          "const": "service-principal"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "schema",
+        "protectedTimePointer",
+        "expectedSigner"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "agent-card",
+            "approval",
+            "artifact",
+            "command",
+            "context-package",
+            "event",
+            "evidence",
+            "extension-profile",
+            "group-snapshot"
+          ]
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^schemas/[a-z0-9][a-z0-9.-]*\\.schema\\.json$(?![\\s\\S])",
+          "maxLength": 160
+        },
+        "protectedTimePointer": {
+          "type": "string",
+          "pattern": "^/[A-Za-z][A-Za-z0-9]*$(?![\\s\\S])",
+          "maxLength": 128
+        },
+        "expectedSigner": {
+          "oneOf": [
+            {"$ref": "#/$defs/principalObjectSigner"},
+            {"$ref": "#/$defs/agentIdSigner"},
+            {"$ref": "#/$defs/servicePrincipalSigner"}
+          ]
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "byteLength", "sha256"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "faultBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseId", "profileId"],
+      "properties": {
+        "caseId": {
+          "$ref": "#/$defs/id"
+        },
+        "profileId": {
+          "enum": [
+            "agent-card",
+            "approval",
+            "artifact",
+            "command",
+            "context-package",
+            "event",
+            "evidence",
+            "extension-profile",
+            "group-snapshot"
+          ]
+        }
+      }
+    },
+    "fault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "basis"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "basis": {
+          "$ref": "#/$defs/faultBasis"
+        }
+      }
+    },
+    "verified": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyId",
+        "principal",
+        "protectedTime",
+        "signingBytes",
+        "signingHash",
+        "signature",
+        "signedDocumentHash"
+      ],
+      "properties": {
+        "keyId": {
+          "$ref": "#/$defs/absoluteId"
+        },
+        "principal": {
+          "$ref": "#/$defs/principal"
+        },
+        "protectedTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signingBytes": {
+          "type": "string",
+          "pattern": "^cryptography/vectors/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "signingHash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "signature": {
+          "$ref": "#/$defs/base64url"
+        },
+        "signedDocumentHash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "completeExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "wireCode", "verified"],
+      "properties": {
+        "stage": {
+          "const": "complete"
+        },
+        "wireCode": {
+          "type": "null"
+        },
+        "verified": {
+          "$ref": "#/$defs/verified"
+        }
+      }
+    },
+    "failureExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "wireCode"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "parse",
+            "schema",
+            "signature-envelope",
+            "key-resolution",
+            "canonicalization",
+            "signature"
+          ]
+        },
+        "wireCode": {
+          "enum": [
+            "PROTOCOL_VIOLATION",
+            "SCHEMA_VALIDATION_FAILED",
+            "AUTH_INVALID_SIGNATURE"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "stage": {
+              "enum": ["parse", "canonicalization"]
+            },
+            "wireCode": {
+              "const": "PROTOCOL_VIOLATION"
+            }
+          }
+        },
+        {
+          "properties": {
+            "stage": {
+              "const": "schema"
+            },
+            "wireCode": {
+              "const": "SCHEMA_VALIDATION_FAILED"
+            }
+          }
+        },
+        {
+          "properties": {
+            "stage": {
+              "enum": ["signature-envelope", "key-resolution", "signature"]
+            },
+            "wireCode": {
+              "const": "AUTH_INVALID_SIGNATURE"
+            }
+          }
+        }
+      ]
+    },
+    "completeEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "document",
+        "registry",
+        "signingKey",
+        "fault",
+        "expect"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "agent-card",
+            "approval",
+            "artifact",
+            "command",
+            "context-package",
+            "event",
+            "evidence",
+            "extension-profile",
+            "group-snapshot"
+          ]
+        },
+        "document": {
+          "type": "string",
+          "pattern": "^cryptography/vectors/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "registry": {
+          "type": "string",
+          "pattern": "^cryptography/keys/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "signingKey": {
+          "type": "string",
+          "pattern": "^cryptography/keys/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "fault": {
+          "type": "null"
+        },
+        "expect": {
+          "$ref": "#/$defs/completeExpectation"
+        }
+      }
+    },
+    "failureEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "document", "registry", "fault", "expect"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "agent-card",
+            "approval",
+            "artifact",
+            "command",
+            "context-package",
+            "event",
+            "evidence",
+            "extension-profile",
+            "group-snapshot"
+          ]
+        },
+        "document": {
+          "type": "string",
+          "pattern": "^cryptography/vectors/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "registry": {
+          "type": "string",
+          "pattern": "^cryptography/keys/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "fault": {
+          "$ref": "#/$defs/fault"
+        },
+        "expect": {
+          "$ref": "#/$defs/failureExpectation"
+        }
+      }
+    },
+    "canonicalizationEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "expectedJcs", "sha256"],
+      "properties": {
+        "input": {
+          "type": "string",
+          "pattern": "^cryptography/vectors/canonicalization/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "expectedJcs": {
+          "type": "string",
+          "pattern": "^cryptography/vectors/canonicalization/(?:[a-z0-9][a-z0-9._-]*/)*[a-z0-9][a-z0-9._-]*$(?![\\s\\S])",
+          "maxLength": 512
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "evaluation": {
+      "oneOf": [
+        {"$ref": "#/$defs/completeEvaluation"},
+        {"$ref": "#/$defs/failureEvaluation"},
+        {"$ref": "#/$defs/canonicalizationEvaluation"}
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "evaluations"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "single",
+            "profile-matrix",
+            "failure-matrix",
+            "canonicalization"
+          ]
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evaluation"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "single"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "evaluations": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "oneOf": [
+                    {"$ref": "#/$defs/completeEvaluation"},
+                    {"$ref": "#/$defs/failureEvaluation"}
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "profile-matrix"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "evaluations": {
+                "minItems": 9,
+                "maxItems": 9,
+                "items": {
+                  "$ref": "#/$defs/completeEvaluation"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "failure-matrix"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "evaluations": {
+                "minItems": 2,
+                "items": {
+                  "$ref": "#/$defs/failureEvaluation"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "canonicalization"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "evaluations": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "$ref": "#/$defs/canonicalizationEvaluation"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

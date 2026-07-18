@@ -1,0 +1,25 @@
+{
+  "approvalId": "urn:missionweaveprotocol:approval:mission-one-revision-nine",
+  "kind": "mission_final",
+  "decision": "approved",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "missionRevision": 9,
+  "artifactHashes": [
+    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "acceptancePolicyVersion": "1.2.0",
+  "approver": {
+    "type": "human",
+    "id": "urn:missionweaveprotocol:human:mission-owner"
+  },
+  "comments": "Acceptance criteria and evidence reviewed.",
+  "conditions": [],
+  "occurredAt": "2026-07-15T04:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-mission-owner",
+    "createdAt": "2026-07-15T04:00:00Z",
+    "value": "kDXH5FdLrSK3uMv__08tAMNl3Z0n_a2pb_SdaQJrXcLuPprNh-HO1Uz5JTCLe9R45-etciBgk9-FjFY_lScCCQ"
+  }
+}

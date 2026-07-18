@@ -1,0 +1,35 @@
+{
+  "evidenceId": "urn:missionweaveprotocol:evidence:integration-tests",
+  "missionId": "urn:missionweaveprotocol:mission:one",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "workItemId": "urn:missionweaveprotocol:work-item:implementation",
+  "type": "deterministic_test",
+  "subject": {
+    "type": "artifact",
+    "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "criterionIds": [
+    "integration-tests"
+  ],
+  "method": "Run the repository integration test suite in the pinned environment.",
+  "result": "passed",
+  "details": {
+    "passed": 24,
+    "failed": 0
+  },
+  "artifactHashes": [
+    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "generatedBy": {
+    "type": "agent",
+    "id": "urn:missionweaveprotocol:agent:test-reviewer"
+  },
+  "toolVersion": "pytest 8.4.1",
+  "createdAt": "2026-07-15T03:10:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-test-reviewer",
+    "createdAt": "2026-07-15T03:10:00Z",
+    "value": "j1B5jBm6EdkK2N-cfSizilwhCFpPnbaPZt38bnKWgLsqCaKDj86rVfITceTGEbry5wvycIMkzAJAN-SbyRWOAg"
+  }
+}

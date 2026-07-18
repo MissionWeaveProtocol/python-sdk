@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missionweaveprotocol.dev/cryptography/0.1/signing-key-fixture.schema.json",
+  "title": "MissionWeaveProtocol 0.1 Test-Only Ed25519 Signing-Key Fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["testOnly", "keyId", "algorithm", "seed", "publicKey"],
+  "properties": {
+    "testOnly": {
+      "const": true
+    },
+    "keyId": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$(?![\\s\\S])",
+      "maxLength": 512
+    },
+    "algorithm": {
+      "const": "Ed25519"
+    },
+    "seed": {
+      "$ref": "#/$defs/base64url32"
+    },
+    "publicKey": {
+      "$ref": "#/$defs/base64url32"
+    }
+  },
+  "$defs": {
+    "base64url32": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$(?![\\s\\S])"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "testOnly": true,
+  "keyId": "urn:missionweaveprotocol:key:crypto-vector-organization-registry",
+  "algorithm": "Ed25519",
+  "seed": "QY6jXzyX78UuayLrYAVNWFx9LZp118NdBn6qycMPFUU",
+  "publicKey": "INENpI4KMQxdZ7NpFLTltBA3E8jMmOCTzd7h2ttzD04"
+}

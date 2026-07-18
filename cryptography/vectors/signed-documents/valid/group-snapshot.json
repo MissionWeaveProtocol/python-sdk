@@ -1,0 +1,35 @@
+{
+  "snapshotId": "urn:missionweaveprotocol:snapshot:mission-one-final",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "throughSequence": 42,
+  "eventIds": [
+    "urn:missionweaveprotocol:event:one",
+    "urn:missionweaveprotocol:event:two"
+  ],
+  "stateHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "policyLog": [
+    {
+      "entryId": "urn:missionweaveprotocol:policy-log:approval",
+      "decision": "Verified exact signed human approval.",
+      "actor": {
+        "type": "service",
+        "id": "urn:missionweaveprotocol:service:authorization"
+      },
+      "occurredAt": "2026-07-15T02:00:00Z",
+      "details": {
+        "approvalId": "urn:missionweaveprotocol:approval:final"
+      }
+    }
+  ],
+  "createdBy": {
+    "type": "service",
+    "id": "urn:missionweaveprotocol:service:group-authority"
+  },
+  "createdAt": "2026-07-15T02:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-group-authority",
+    "createdAt": "2026-07-15T02:00:00Z",
+    "value": "6gkChlDXUXz7fcuJrghdpytgO3H3gT9l6JzQWkXabz2to2EeopAZWx13Cm6yCOicLk3p4gLVB2OHHSkZyZSHBA"
+  }
+}

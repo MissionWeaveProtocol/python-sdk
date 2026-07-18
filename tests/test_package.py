@@ -53,7 +53,19 @@ def test_package_configuration_includes_typed_marker_and_complete_schema_directo
 
     assert force_include["src/missionweaveprotocol/py.typed"] == "missionweaveprotocol/py.typed"
     assert force_include["schemas"] == "missionweaveprotocol/schemas"
+    assert force_include["cryptography"] == "missionweaveprotocol/cryptography"
+    assert force_include["PROTOCOL_PIN.json"] == "missionweaveprotocol/PROTOCOL_PIN.json"
     assert (ROOT / "src" / "missionweaveprotocol" / "py.typed").is_file()
+
+
+def test_packaged_cryptography_tree_includes_binary_and_canonical_json_artifacts() -> None:
+    cryptography = ROOT / "cryptography"
+
+    assert (cryptography / "manifest.json").is_file()
+    assert (
+        cryptography / "vectors" / "signed-documents" / "invalid" / "command-invalid-utf8.bin"
+    ).is_file()
+    assert (cryptography / "vectors" / "canonicalization" / "command.signing.jcs").is_file()
 
 
 def test_all_21_packaged_normative_schemas_are_present_and_valid() -> None:

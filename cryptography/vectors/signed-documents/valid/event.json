@@ -1,0 +1,34 @@
+{
+  "protocolVersion": "0.1",
+  "eventId": "urn:uuid:00000000-0000-4000-8000-000000000002",
+  "groupId": "urn:missionweaveprotocol:group:mission-one",
+  "sequence": 42,
+  "aggregateRevision": 5,
+  "kind": "message.posted",
+  "actor": {
+    "type": "agent",
+    "id": "urn:missionweaveprotocol:agent:coordinator"
+  },
+  "cause": {
+    "type": "command",
+    "id": "urn:uuid:00000000-0000-4000-8000-000000000001"
+  },
+  "correlationId": "urn:uuid:00000000-0000-4000-8000-000000000099",
+  "conversationId": "urn:missionweaveprotocol:conversation:planning",
+  "occurredAt": "2026-07-15T00:00:01Z",
+  "payload": {
+    "messageId": "urn:missionweaveprotocol:message:one",
+    "authority": false
+  },
+  "acceptedBy": {
+    "type": "service",
+    "id": "urn:missionweaveprotocol:service:group-authority"
+  },
+  "commandHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-group-authority",
+    "createdAt": "2026-07-15T00:00:01Z",
+    "value": "EfaJXZy7q9SV2CNikXLchB_P_072z-Bc8o3rg5q2JNA7xYFJjuHTBa2308VRksLtq5GiHDZ_LvUDhHIGTPvpDg"
+  }
+}

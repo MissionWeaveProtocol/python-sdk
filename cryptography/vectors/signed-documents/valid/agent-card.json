@@ -1,0 +1,53 @@
+{
+  "agentId": "urn:missionweaveprotocol:agent:developer-one",
+  "organizationId": "urn:missionweaveprotocol:organization:acme",
+  "cardVersion": 3,
+  "displayName": "Developer Agent One",
+  "description": "Implements and tests Python changes.",
+  "owner": {
+    "type": "human",
+    "id": "urn:missionweaveprotocol:human:platform-owner"
+  },
+  "status": "active",
+  "protocolVersions": [
+    "0.1"
+  ],
+  "endpoints": [
+    {
+      "transport": "wss",
+      "uri": "wss://agents.acme.example/developer-one"
+    }
+  ],
+  "publicKeys": [
+    {
+      "keyId": "urn:missionweaveprotocol:key:crypto-vector-developer-one",
+      "algorithm": "Ed25519",
+      "publicKey": "7D-keB5WWULuPx53Zwf9j2JVLLTq4btqsJE1ubL66Vk",
+      "validFrom": "2026-07-01T00:00:00Z"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "acme.software.python-implementation",
+      "version": "2.1.0",
+      "inputSchema": "https://schemas.acme.example/capabilities/python-implementation-input.json",
+      "inputSchemaHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "outputSchema": "https://schemas.acme.example/capabilities/python-implementation-output.json",
+      "outputSchemaHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "constraints": {
+        "python": ">=3.12"
+      },
+      "verifiedEvidence": [
+        "urn:missionweaveprotocol:evidence:capability-python-2026"
+      ]
+    }
+  ],
+  "maxConcurrency": 2,
+  "issuedAt": "2026-07-01T00:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyId": "urn:missionweaveprotocol:key:crypto-vector-organization-registry",
+    "createdAt": "2026-07-01T00:00:00Z",
+    "value": "uK2KeUorGUeBCVgjMZZ1CSZjav9VosLQ7wCp3-bIeIawJEmqzfkDqzUbZZsn-ikvUzAFiSbg258O_4y0ZtENDA"
+  }
+}
