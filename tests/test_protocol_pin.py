@@ -35,7 +35,7 @@ def test_vendored_protocol_artifacts_match_pin() -> None:
     all_paths: list[Path] = []
 
     assert pin["repository"] == ("https://github.com/missionweaveprotocol/missionweaveprotocol")
-    assert pin["commit"] == "6f10987627d62fb296e3490ceceb5539b1e94b70"
+    assert pin["commit"] == "33e47ad8a7318f942de77fb72dbb054d85881b40"
     assert pin["protocolVersion"] == "0.1"
     assert pin["wireNamespace"] == "missionweaveprotocol"
 
@@ -54,7 +54,7 @@ def test_vendored_cryptography_bundle_matches_independent_pin() -> None:
         source_commit="235aee85ba88934641822e1639e08efd2c9e29b6",
         profile_id="missionweaveprotocol.signed-document-verification.v0.1",
         manifest_version=1,
-        artifact_digest=("sha256:487e18c1ea7053432953f28d1496ae4fdb8e9d42c2eeb8e94f9b21f8cc2596a2"),
+        artifact_digest=("sha256:159a4900987723537d0d110ec6724c5e1ee52854951a9c69278386d751baae08"),
         artifact_count=94,
         case_count=22,
         evaluation_count=58,

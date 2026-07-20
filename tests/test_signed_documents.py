@@ -564,7 +564,7 @@ def test_sign_normalizes_host_integers_to_binary64_without_losing_exact_values()
     assert signed.document == verified.document
 
 
-def test_verify_classifies_a_signature_metadata_surrogate_at_canonicalization() -> None:
+def test_verify_classifies_a_non_ascii_signature_key_id_at_schema_validation() -> None:
     document = _json("cryptography/vectors/signed-documents/valid/command.json")
     signature = document["signature"]
     assert isinstance(signature, dict)
@@ -594,8 +594,36 @@ def test_verify_classifies_a_signature_metadata_surrogate_at_canonicalization() 
     with pytest.raises(SignedDocumentVerificationError) as rejected:
         SignedDocumentCodec().verify(SignedDocumentKind.COMMAND, raw, SurrogateRegistryResolver())
 
-    assert rejected.value.protected_error.stage == VerificationStage.CANONICALIZATION
-    assert rejected.value.wire_error.code.value == "PROTOCOL_VIOLATION"
+    assert rejected.value.protected_error.stage == VerificationStage.SCHEMA
+    assert rejected.value.wire_error.code.value == "SCHEMA_VALIDATION_FAILED"
+
+
+def test_verify_rejects_malformed_percent_escape_in_key_id_before_resolution() -> None:
+    document = _json("cryptography/vectors/signed-documents/valid/command.json")
+    signature = document["signature"]
+    assert isinstance(signature, dict)
+    signature["keyId"] = "example:%ZZ"
+    raw = json.dumps(document, separators=(",", ":")).encode()
+
+    class RecordingResolver:
+        called = False
+
+        def resolve(self, request: KeyResolutionRequest) -> KeyRegistrySnapshot:
+            self.called = True
+            return KeyRegistrySnapshot(
+                completeness=KeyRegistryCompleteness.ORGANIZATION_WIDE,
+                registry_bytes=(ROOT / "cryptography/keys/registry-valid.json").read_bytes(),
+            )
+
+    resolver = RecordingResolver()
+    with pytest.raises(SignedDocumentVerificationError) as rejected:
+        SignedDocumentCodec().verify(SignedDocumentKind.COMMAND, raw, resolver)
+
+    assert (
+        rejected.value.protected_error.stage,
+        rejected.value.wire_error.code.value,
+        resolver.called,
+    ) == (VerificationStage.SCHEMA, "SCHEMA_VALIDATION_FAILED", False)
 
 
 def test_verify_preserves_a_labeled_diagnostic_for_trailing_json_data() -> None:

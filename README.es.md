@@ -71,7 +71,7 @@ uv run mypy
 uv run missionweaveprotocol-conformance --root .
 ```
 
-El comando de conformidad valida los 52 vectores incluidos frente a los 21 esquemas incluidos de
+El comando de conformidad valida los 56 vectores incluidos frente a los 21 esquemas incluidos de
 Draft 2020-12, con comprobación de formato. Termina con un estado distinto de cero si la validez
 no coincide con la esperada. También puede validar un checkout separado del protocolo o un bundle
 de distribución:

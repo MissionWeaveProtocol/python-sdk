@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from jsonschema import FormatChecker, ValidationError
+from jsonschema import ValidationError
 from jsonschema.validators import validator_for
 from referencing import Registry, Resource
+
+from .schema_formats import protocol_format_checker
+
+_FORMAT_CHECKER = protocol_format_checker()
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +84,7 @@ class SchemaCatalog:
         validator_type(
             schema,
             registry=self._registry,
-            format_checker=FormatChecker(),
+            format_checker=_FORMAT_CHECKER,
         ).validate(instance)
 
 

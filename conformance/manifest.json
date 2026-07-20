@@ -6,6 +6,12 @@
     "valid": true
   },
   {
+    "name": "valid Command action ID with an empty URI hier-part",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/valid/command-action-id-empty-hier-part.json",
+    "valid": true
+  },
+  {
     "name": "valid human Mission creation Command without pre-existing epochs",
     "schema": "schemas/command.schema.json",
     "instance": "conformance/vectors/valid/human-mission-create-command.json",
@@ -147,6 +153,24 @@
     "name": "invalid unsigned durable Command",
     "schema": "schemas/command.schema.json",
     "instance": "conformance/vectors/invalid/command-missing-signature.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Command action ID with a trailing line feed",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/command-action-id-trailing-line-feed.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Command action ID using a relative URI reference",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/command-action-id-relative-reference.json",
+    "valid": false
+  },
+  {
+    "name": "invalid Command action ID using an IRI-only spelling",
+    "schema": "schemas/command.schema.json",
+    "instance": "conformance/vectors/invalid/command-action-id-iri-only.json",
     "valid": false
   },
   {

@@ -73,7 +73,7 @@ uv run mypy
 uv run missionweaveprotocol-conformance --root .
 ```
 
-La commande de conformité valide les 52 vecteurs embarqués par rapport aux 21 schémas Draft
+La commande de conformité valide les 56 vecteurs embarqués par rapport aux 21 schémas Draft
 2020-12 embarqués, avec vérification des formats. Elle renvoie un statut non nul en cas d’écart de
 validité. Elle peut également valider une copie de travail ou un ensemble publié distinct du
 protocole :

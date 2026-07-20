@@ -16,7 +16,7 @@ _EXPECTED_CRYPTOGRAPHY_PIN: dict[str, object] = {
     "sourceCommit": "235aee85ba88934641822e1639e08efd2c9e29b6",
     "profileId": "missionweaveprotocol.signed-document-verification.v0.1",
     "manifestVersion": 1,
-    "artifactDigest": "sha256:487e18c1ea7053432953f28d1496ae4fdb8e9d42c2eeb8e94f9b21f8cc2596a2",
+    "artifactDigest": "sha256:159a4900987723537d0d110ec6724c5e1ee52854951a9c69278386d751baae08",
     "artifactCount": 94,
     "caseCount": 22,
     "evaluationCount": 58,

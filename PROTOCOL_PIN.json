@@ -1,18 +1,18 @@
 {
   "repository": "https://github.com/missionweaveprotocol/missionweaveprotocol",
-  "commit": "6f10987627d62fb296e3490ceceb5539b1e94b70",
+  "commit": "33e47ad8a7318f942de77fb72dbb054d85881b40",
   "protocolVersion": "0.1",
   "wireNamespace": "missionweaveprotocol",
   "artifacts": {
     "schemas": {
       "path": "schemas",
       "files": 21,
-      "sha256": "a225900a2c2a6c0d03de38ffa7d67dd16fd1586ca63b8ce1d019159fba5f0413"
+      "sha256": "de90adb6a84995ce6e7e35f20c58f74293546ad2aca61796429c8b1d8d269c42"
     },
     "conformance": {
       "path": "conformance",
-      "files": 53,
-      "sha256": "21badf03fc8b05874a744a2d66d064265c635512dd49378b8d24ab1aa0e958da"
+      "files": 57,
+      "sha256": "fc7d6b2005b4cdebcb9d47efd0a3ce991fea111776c4271beaf8945e11b5d7df"
     }
   },
   "cryptography": {
@@ -20,10 +20,10 @@
     "sourceCommit": "235aee85ba88934641822e1639e08efd2c9e29b6",
     "profileId": "missionweaveprotocol.signed-document-verification.v0.1",
     "manifestVersion": 1,
-    "artifactDigest": "sha256:487e18c1ea7053432953f28d1496ae4fdb8e9d42c2eeb8e94f9b21f8cc2596a2",
+    "artifactDigest": "sha256:159a4900987723537d0d110ec6724c5e1ee52854951a9c69278386d751baae08",
     "artifactCount": 94,
     "caseCount": 22,
     "evaluationCount": 58
   },
-  "bundleSha256": "b5590fae29ae09e8c2ec77973405878f4dcb13d23e8acdfb888d563ec770bba7"
+  "bundleSha256": "eed30aeb0a6d39575b6ab2f3121de27cef34d27dd9659ee4e5a7204ec5deeea7"
 }

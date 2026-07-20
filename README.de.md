@@ -79,7 +79,7 @@ uv run mypy
 uv run missionweaveprotocol-conformance --root .
 ```
 
-Der Konformitäts-Command validiert alle 52 eingebetteten Vektoren mit
+Der Konformitäts-Command validiert alle 56 eingebetteten Vektoren mit
 Formatprüfung gegen die 21 eingebetteten Schemas nach Draft 2020-12. Bei einer
 abweichenden Gültigkeit beendet er sich mit einem Status ungleich null. Er kann
 auch einen separaten Protokoll-Checkout oder ein Release-Bündel validieren:

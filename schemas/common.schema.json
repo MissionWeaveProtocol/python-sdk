@@ -8,7 +8,12 @@
     },
     "id": {
       "type": "string",
-      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$",
+      "format": "uri",
+      "$comment": "The absolute-URI prefix plus the whole-value ASCII guard avoids end-anchor acceptance before a final line feed.",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:",
+      "not": {
+        "pattern": "[^A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%-]"
+      },
       "maxLength": 512
     },
     "kind": {

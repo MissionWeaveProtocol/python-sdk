@@ -8,5 +8,8 @@ or commit, run the complete manifest, and record the pinned source and content d
 repository.
 
 Passing these vectors demonstrates structural schema conformance only. Behavioral conformance also
-requires the state-machine, ordering, authorization, signature, lease, budget, and replay rules in
-[`spec/PROTOCOL.md`](../spec/PROTOCOL.md).
+requires the state-machine, ordering, authorization, lease, budget, and replay rules in
+[`spec/PROTOCOL.md`](../spec/PROTOCOL.md). Signed-document cryptographic interoperability is covered
+separately by the [cryptography bundle](../cryptography/README.md); passing that bundle likewise
+does not prove First-Admission Record validation, Command freshness, or signer authorization under
+applicable role and policy.

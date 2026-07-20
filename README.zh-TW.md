@@ -66,7 +66,7 @@ uv run mypy
 uv run missionweaveprotocol-conformance --root .
 ```
 
-符合性測試命令會使用格式檢查，根據 21 個內建的 Draft 2020-12 schema 驗證全部 52
+符合性測試命令會使用格式檢查，根據 21 個內建的 Draft 2020-12 schema 驗證全部 56
 個內建符合性向量。若實際有效性與預期不一致，命令將以非零狀態退出。它也可以驗證獨立的
 協定工作副本或發行套件：
 
