@@ -19,11 +19,12 @@ from typing import Any, NoReturn, Protocol, runtime_checkable
 import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from jsonschema import FormatChecker, ValidationError
+from jsonschema import ValidationError
 from jsonschema.validators import extend, validator_for
 from referencing import Registry, Resource
 
 from .conformance import default_schema_root
+from .schema_formats import protocol_format_checker
 from .wire import ErrorCode
 
 
@@ -335,7 +336,7 @@ class _Envelope:
     service_principal: bool
 
 
-_FORMAT_CHECKER = FormatChecker()
+_FORMAT_CHECKER = protocol_format_checker()
 
 
 @_FORMAT_CHECKER.checks("date-time")
