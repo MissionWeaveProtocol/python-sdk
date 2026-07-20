@@ -53,6 +53,7 @@ def test_package_configuration_includes_typed_marker_and_complete_schema_directo
 
     assert force_include["src/missionweaveprotocol/py.typed"] == "missionweaveprotocol/py.typed"
     assert force_include["schemas"] == "missionweaveprotocol/schemas"
+    assert force_include["conformance"] == "missionweaveprotocol/conformance"
     assert force_include["cryptography"] == "missionweaveprotocol/cryptography"
     assert force_include["PROTOCOL_PIN.json"] == "missionweaveprotocol/PROTOCOL_PIN.json"
     assert (ROOT / "src" / "missionweaveprotocol" / "py.typed").is_file()

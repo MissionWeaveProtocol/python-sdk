@@ -83,6 +83,56 @@ def test_conformance_entrypoint_runs_repository_manifest() -> None:
     assert "conformance vectors passed" in result.output
 
 
+def test_conformance_entrypoint_resolves_default_resources_outside_checkout(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(cli.conformance_app)
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "56/56 conformance vectors passed"
+
+
+def test_conformance_manifest_override_keeps_current_directory_as_root(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://schemas.example.test/custom.schema.json",
+        "type": "object",
+        "required": ["ok"],
+        "properties": {"ok": {"const": True}},
+        "additionalProperties": False,
+    }
+    instance = {"ok": True}
+    manifest_entry = {
+        "name": "custom-valid",
+        "schema": "schemas/custom.schema.json",
+        "instance": "vectors/custom.json",
+        "valid": True,
+    }
+
+    schemas = tmp_path / "schemas"
+    schemas.mkdir()
+    (schemas / "custom.schema.json").write_text(json.dumps(schema), encoding="utf-8")
+    vectors = tmp_path / "vectors"
+    vectors.mkdir()
+    (vectors / "custom.json").write_text(json.dumps(instance), encoding="utf-8")
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    manifest = manifests / "custom-manifest.json"
+    manifest.write_text(json.dumps([manifest_entry]), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(cli.conformance_app, ["--manifest", str(manifest)])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "1/1 conformance vectors passed"
+
+
 def test_server_entrypoint_composes_gateway_and_uvicorn(
     tmp_path: Path,
     monkeypatch: Any,
