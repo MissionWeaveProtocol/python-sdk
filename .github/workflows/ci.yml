@@ -148,3 +148,21 @@ jobs:
 
       - name: Build wheel and source distribution
         run: uv build
+
+      - name: Verify installed wheel conformance bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheel_env="${RUNNER_TEMP}/missionweaveprotocol-wheel"
+          run_root="${RUNNER_TEMP}/missionweaveprotocol-wheel-run"
+          actual_output="${RUNNER_TEMP}/missionweaveprotocol-conformance.actual"
+          expected_output="${RUNNER_TEMP}/missionweaveprotocol-conformance.expected"
+          uv venv "${wheel_env}" --python 3.12
+          uv pip install --python "${wheel_env}/bin/python" dist/*.whl
+          mkdir "${run_root}"
+          (
+            cd "${run_root}"
+            "${wheel_env}/bin/missionweaveprotocol-conformance"
+          ) >"${actual_output}"
+          printf '%s\n' '56/56 conformance vectors passed' >"${expected_output}"
+          cmp "${expected_output}" "${actual_output}"

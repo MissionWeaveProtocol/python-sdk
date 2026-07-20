@@ -70,6 +70,18 @@ def default_schema_root() -> Path:
     raise FileNotFoundError("MissionWeaveProtocol normative schemas are not installed")
 
 
+def default_conformance_root() -> Path:
+    """Locate a complete conformance bundle in an installed wheel or source checkout."""
+
+    packaged = Path(__file__).resolve().parent
+    if (packaged / "schemas").is_dir() and (packaged / "conformance" / "manifest.json").is_file():
+        return packaged
+    checkout = Path(__file__).resolve().parents[2]
+    if (checkout / "schemas").is_dir() and (checkout / "conformance" / "manifest.json").is_file():
+        return checkout
+    raise FileNotFoundError("MissionWeaveProtocol conformance resources are not installed")
+
+
 class SchemaCatalog:
     """Validate named documents against one resolved normative schema set."""
 
