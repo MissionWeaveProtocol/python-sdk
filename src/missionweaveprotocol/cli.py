@@ -18,7 +18,7 @@ from pydantic import JsonValue, ValidationError
 
 from .auth import AgentKeyRegistry, SessionAuthority, default_agent_key_id
 from .canonical import canonical_hash, canonical_json
-from .conformance import ConformanceReport, run_manifest
+from .conformance import ConformanceReport, default_conformance_root, run_manifest
 from .core import Core
 from .crypto import encode_public_key, generate_keypair, load_private_key, verify_canonical
 from .gateway import CoreGatewayAdapter, GroupGateway
@@ -391,18 +391,24 @@ def _print_conformance(report: ConformanceReport) -> None:
 @conformance_app.callback(invoke_without_command=True)
 def _conformance_command(
     root: Annotated[
-        Path,
+        Path | None,
         typer.Option(
             "--root", exists=True, file_okay=False, help="MissionWeaveProtocol repository root."
         ),
-    ] = Path("."),
+    ] = None,
     manifest: Annotated[
         Path | None,
         typer.Option("--manifest", exists=True, dir_okay=False),
     ] = None,
 ) -> None:
     try:
-        report = run_manifest(root.resolve(), manifest.resolve() if manifest else None)
+        if root is not None:
+            resolved_root = root.resolve()
+        elif manifest is not None:
+            resolved_root = Path.cwd().resolve()
+        else:
+            resolved_root = default_conformance_root()
+        report = run_manifest(resolved_root, manifest.resolve() if manifest else None)
     except (OSError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=1) from error
